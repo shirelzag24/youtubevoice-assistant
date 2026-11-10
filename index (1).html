@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YouTube Voice Assistant: שליטה קולית ביוטיוב</title>
+<meta name="description" content="תוסף לדפדפן Chrome ששולט ביוטיוב בקול: עצירה, מעבר בזמן, מעבר בין שירים, דילוג על פרסומות, חיפוש שיר לפי שם ועוד. בשבע שפות.">
+<meta name="theme-color" content="#ffffff">
+<meta property="og:title" content="YouTube Voice Assistant: שליטה קולית ביוטיוב">
+<meta property="og:description" content="תוסף לדפדפן Chrome ששולט ביוטיוב בקול: עצירה, מעבר בזמן, מעבר בין שירים, דילוג על פרסומות, חיפוש שיר לפי שם ועוד. בשבע שפות.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%3E%3Ccircle%20cx%3D%2712%27%20cy%3D%2712%27%20r%3D%2712%27%20fill%3D%27%23ff0000%27/%3E%3Cpath%20fill%3D%27%23fff%27%20transform%3D%27translate%284.8%204.8%29%20scale%28.6%29%27%20d%3D%27M12%2014c1.66%200%203-1.34%203-3V5c0-1.66-1.34-3-3-3S9%203.34%209%205v6c0%201.66%201.34%203%203%203zm5.3-3c0%203-2.54%205.1-5.3%205.1S6.7%2014%206.7%2011H5c0%203.41%202.72%206.23%206%206.72V21h2v-3.28c3.28-.49%206-3.31%206-6.72h-1.7z%27/%3E%3C/svg%3E">
+<style>
+:root, [data-theme="light"] {
+  --bg:#ffffff; --surface:#f2f2f2; --surface2:#e6e6e6; --ink:#0f0f0f; --muted:#606060; --line:#e5e5e5;
+  --red:#ff0000; --red-d:#cc0000; --blue:#065fd4; --selbg:#0f0f0f; --selink:#ffffff;
+  --staff:rgba(15,15,15,.075); --note:rgba(255,0,0,.17); --note2:rgba(15,15,15,.12);
+  --shadow:0 1px 3px rgba(0,0,0,.10), 0 18px 40px -12px rgba(0,0,0,.18); --ease:cubic-bezier(.4,0,.2,1);
+}
+[data-theme="dark"] {
+  --bg:#0f0f0f; --surface:#272727; --surface2:#3f3f3f; --ink:#f1f1f1; --muted:#aaaaaa; --line:#3f3f3f;
+  --selbg:#f1f1f1; --selink:#0f0f0f; --staff:rgba(255,255,255,.09); --note:rgba(255,70,70,.30); --note2:rgba(255,255,255,.18);
+  --shadow:0 1px 3px rgba(0,0,0,.5), 0 18px 40px -12px rgba(0,0,0,.7);
+}
+* { box-sizing:border-box; }
+html { scroll-behavior:smooth; scroll-padding-top:120px; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 "YouTube Sans","Roboto","Segoe UI",system-ui,-apple-system,"Noto Sans Hebrew",Arial,sans-serif; overflow-x:hidden; -webkit-font-smoothing:antialiased; transition:background .3s var(--ease), color .3s var(--ease); }
+a { color:inherit; }
+svg { display:block; }
+a:focus-visible, button:focus-visible, summary:focus-visible { outline:3px solid var(--blue); outline-offset:2px; border-radius:10px; }
+.wrap { width:min(1280px, 100% - 48px); margin-inline:auto; }
+.sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+/* ───── רקע: שורות תווים ותווים מוזיקליים שצפים ───── */
+.stage { position:fixed; inset:0; z-index:-1; overflow:hidden; pointer-events:none; }
+.staff { position:absolute; width:200%; height:150px; fill:none; stroke:var(--staff); stroke-width:1.3; vector-effect:non-scaling-stroke; animation:flow 140s linear infinite; }
+.staff path { vector-effect:non-scaling-stroke; }
+.st1 { top:9vh; left:0; } .st2 { top:48vh; left:0; animation-duration:190s; animation-direction:reverse; } .st3 { top:82vh; left:0; animation-duration:160s; }
+[dir="rtl"] .staff { left:auto !important; right:0; }
+@keyframes flow { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+[dir="rtl"] .staff { animation-name:flowR; } @keyframes flowR { from { transform:translateX(0); } to { transform:translateX(50%); } }
+.nf { position:absolute; bottom:-80px; left:var(--x); width:var(--s); color:var(--note); animation:rise var(--d) linear infinite; animation-delay:var(--dl); }
+.nf.alt { color:var(--note2); }
+.nf svg { width:100%; height:auto; animation:sway var(--sw) ease-in-out infinite alternate; }
+@keyframes rise { to { transform:translateY(calc(-100vh - 160px)); } }
+@keyframes sway { from { transform:translateX(-22px) rotate(-10deg); } to { transform:translateX(22px) rotate(10deg); } }
+[data-motion="off"] *, [data-motion="off"] *::before, [data-motion="off"] *::after { animation:none !important; }
+[data-motion="off"] .nf { display:none; }
+
+/* ───── Masthead ───── */
+.mast { position:sticky; top:0; z-index:60; background:color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+.mast .in { height:56px; display:flex; align-items:center; gap:16px; padding-inline:20px; max-width:1440px; margin-inline:auto; }
+.brand { display:flex; align-items:center; gap:10px; text-decoration:none; font-weight:700; font-size:19px; letter-spacing:-.4px; flex:none; }
+.logo { width:34px; height:34px; border-radius:50%; background:var(--red); color:#fff; display:grid; place-items:center; }
+.logo svg { width:19px; height:19px; }
+.search { flex:1; min-width:0; display:flex; justify-content:center; align-items:center; gap:12px; }
+.pill { display:flex; align-items:center; width:min(580px, 100%); height:40px; border:1px solid var(--line); border-radius:40px; overflow:hidden; background:var(--bg); }
+.pill .tx { flex:1; min-width:0; padding-inline:18px; font-size:16px; white-space:nowrap; overflow:hidden; direction:auto; text-align:start; unicode-bidi:plaintext; }
+.pill .tx::after { content:""; display:inline-block; width:1px; height:20px; background:var(--ink); margin-inline-start:2px; vertical-align:middle; animation:blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity:0; } }
+.pill .sb { width:64px; height:100%; display:grid; place-items:center; background:var(--surface); border-inline-start:1px solid var(--line); }
+.pill .sb svg { width:22px; height:22px; }
+.micb { position:relative; width:40px; height:40px; flex:none; border-radius:50%; background:var(--surface); display:grid; place-items:center; }
+.micb svg { width:22px; height:22px; animation:grow 2.4s ease-in-out infinite; }
+.micb::before, .micb::after { content:""; position:absolute; inset:0; border-radius:50%; border:2px solid var(--red); opacity:0; animation:ripple 2.4s var(--ease) infinite; }
+.micb::after { animation-delay:1.2s; }
+@keyframes grow { 0%,100% { transform:scale(1); } 50% { transform:scale(1.28); } }
+@keyframes ripple { 0% { transform:scale(1); opacity:.7; } 100% { transform:scale(2); opacity:0; } }
+.ctl { display:flex; align-items:center; gap:8px; margin-inline-start:auto; flex:none; }
+.ib { width:40px; height:40px; border-radius:50%; border:0; background:transparent; color:var(--ink); display:grid; place-items:center; cursor:pointer; transition:background .2s var(--ease); }
+.ib:hover { background:var(--surface); }
+.ib svg { width:22px; height:22px; }
+.ib[aria-pressed="false"] { opacity:.55; }
+.lang { display:flex; background:var(--surface); border-radius:999px; padding:3px; }
+.lang button { border:0; background:transparent; color:var(--ink); height:30px; padding:0 11px; border-radius:999px; font:600 13px inherit; font-family:inherit; cursor:pointer; }
+.lang button[aria-pressed="true"] { background:var(--selbg); color:var(--selink); }
+.pb { display:inline-flex; align-items:center; justify-content:center; gap:8px; height:48px; padding:0 24px; border-radius:999px; font-weight:600; font-size:16px; text-decoration:none; border:0; cursor:pointer; transition:background .2s var(--ease), transform .12s var(--ease); white-space:nowrap; font-family:inherit; }
+.pb svg { width:20px; height:20px; }
+.pb.red { background:var(--red); color:#fff; } .pb.red:hover { background:var(--red-d); }
+.pb.gray { background:var(--surface); color:var(--ink); } .pb.gray:hover { background:var(--surface2); }
+.pb:active { transform:scale(.97); }
+.pb.sm { height:36px; padding:0 16px; font-size:14px; }
+
+/* ───── פס צ'יפים ───── */
+.chipbar { position:sticky; top:56px; z-index:59; background:color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border-bottom:1px solid var(--line); }
+.chipbar .in { display:flex; gap:12px; padding:12px 20px; overflow-x:auto; scrollbar-width:none; max-width:1440px; margin-inline:auto; }
+.chipbar .in::-webkit-scrollbar { display:none; }
+.chip { display:inline-flex; align-items:center; height:32px; padding:0 12px; border-radius:8px; background:var(--surface); color:var(--ink); font:500 14px inherit; font-family:inherit; text-decoration:none; white-space:nowrap; border:0; cursor:pointer; transition:background .2s var(--ease); flex:none; }
+.chip:hover { background:var(--surface2); }
+.chip[aria-current="true"], .chip.on { background:var(--selbg); color:var(--selink); }
+
+/* ───── Hero ───── */
+.hero { padding:56px 0 70px; }
+.hgrid { display:grid; grid-template-columns:minmax(0,.95fr) minmax(0,1.1fr); gap:56px; align-items:center; }
+.kick { display:inline-flex; align-items:center; gap:10px; height:34px; padding-inline:6px 14px; border-radius:999px; background:var(--surface); font-weight:600; font-size:14px; }
+.kick .m { position:relative; width:24px; height:24px; border-radius:50%; background:var(--red); color:#fff; display:grid; place-items:center; }
+.kick .m svg { width:14px; height:14px; animation:grow 2.4s ease-in-out infinite; }
+.kick .m::after { content:""; position:absolute; inset:0; border-radius:50%; border:2px solid var(--red); animation:ripple 2.4s var(--ease) infinite; }
+h1 { margin:20px 0 18px; font-size:clamp(44px, 6vw, 84px); line-height:1; letter-spacing:-.035em; font-weight:800; }
+h1 span { display:block; }
+h1 .hl { color:var(--red); }
+.sub { color:var(--muted); font-size:clamp(18px, 1.9vw, 22px); line-height:1.5; max-width:30em; margin:0 0 28px; }
+.cta { display:flex; flex-wrap:wrap; gap:12px; }
+.mini { display:flex; flex-wrap:wrap; gap:8px; margin-top:26px; }
+.mini span { display:inline-flex; align-items:center; height:28px; padding:0 10px; border-radius:8px; background:var(--surface); font-size:13px; font-weight:500; }
+
+.player-wrap { min-width:0; }
+.pl { direction:ltr; position:relative; aspect-ratio:16/9; border-radius:16px; overflow:hidden; background:#000; box-shadow:var(--shadow); }
+.screen { position:absolute; inset:0; overflow:hidden; }
+.art { position:absolute; inset:0; background:linear-gradient(135deg, var(--c1,#ff3d54), var(--c2,#ff9a4c)); transition:background .8s var(--ease); }
+.art::before { content:""; position:absolute; inset:0; background:repeating-linear-gradient(to bottom, transparent 0 12px, rgba(255,255,255,.18) 12px 13px); mask-image:linear-gradient(to bottom, transparent 18%, #000 30%, #000 62%, transparent 74%); -webkit-mask-image:linear-gradient(to bottom, transparent 18%, #000 30%, #000 62%, transparent 74%); }
+.art .bn { position:absolute; left:8%; top:12%; width:22%; color:rgba(255,255,255,.28); }
+.art .bn2 { left:auto; right:9%; top:20%; width:14%; color:rgba(255,255,255,.2); transform:rotate(12deg); }
+.eqs { position:absolute; left:6%; right:6%; bottom:54px; height:90px; display:flex; align-items:flex-end; gap:5px; }
+.eqs i { flex:1; background:rgba(255,255,255,.6); border-radius:3px 3px 0 0; height:100%; transform-origin:bottom; transform:scaleY(.2); animation:eqb 1.4s ease-in-out infinite; animation-delay:calc(var(--i) * -90ms); }
+@keyframes eqb { 0%,100% { transform:scaleY(var(--lo)); } 50% { transform:scaleY(var(--hi)); } }
+.pl.paused .eqs i { animation-play-state:paused; }
+.adtag { position:absolute; left:12px; top:12px; display:none; background:#ffd600; color:#000; font-weight:700; font-size:12px; padding:3px 7px; border-radius:4px; }
+.skipb { position:absolute; right:0; bottom:62px; display:none; background:rgba(20,20,20,.78); color:#fff; border:1px solid rgba(255,255,255,.45); border-inline-end:0; padding:9px 16px; font-size:14px; font-weight:600; border-radius:6px 0 0 6px; }
+.pl.ad .adtag, .pl.ad .skipb { display:block; }
+.pause-ic { position:absolute; inset:0; margin:auto; width:64px; height:64px; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; display:grid; place-items:center; opacity:0; transition:opacity .25s; }
+.pause-ic svg { width:30px; height:30px; }
+.pl.paused .pause-ic { opacity:1; }
+.ptoast { position:absolute; left:12px; bottom:64px; background:rgba(0,0,0,.8); color:#fff; font-size:13px; padding:7px 12px; border-radius:8px; opacity:0; transform:translateY(6px); transition:all .25s var(--ease); }
+.ptoast.on { opacity:1; transform:none; }
+.ctrls { position:absolute; left:0; right:0; bottom:0; padding:28px 14px 8px; background:linear-gradient(transparent, rgba(0,0,0,.72)); color:#fff; }
+.track { position:relative; height:4px; background:rgba(255,255,255,.3); border-radius:2px; margin-bottom:8px; }
+.prog { position:absolute; left:0; top:0; bottom:0; width:9%; background:var(--red); border-radius:2px; transition:width .45s var(--ease); }
+.pl.ad .prog { background:#ffd600; }
+.pdot { position:absolute; top:50%; left:9%; width:13px; height:13px; border-radius:50%; background:var(--red); transform:translate(-50%,-50%); transition:left .45s var(--ease); }
+.pl.ad .pdot { background:#ffd600; }
+.crow { display:flex; align-items:center; gap:14px; font-size:13px; font-weight:500; }
+.crow svg { width:22px; height:22px; flex:none; }
+.vbar { width:46px; height:3px; border-radius:2px; background:rgba(255,255,255,.3); overflow:hidden; margin-left:-6px; }
+.vbar i { display:block; height:100%; background:#fff; width:55%; transition:width .4s var(--ease); }
+.crow .sp { flex:1; }
+.ov { position:absolute; left:50%; top:44%; width:min(300px, 64%); transform:translate(-50%,-50%) scale(.88); opacity:0; transition:opacity .3s var(--ease), transform .3s var(--ease); border-radius:26px; padding:20px 16px 16px; text-align:center; color:#fff;
+  background:rgba(28,32,48,.86); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid rgba(110,236,196,.32); box-shadow:0 20px 50px rgba(0,0,0,.45); }
+.ov.on { opacity:1; transform:translate(-50%,-50%) scale(1); }
+.ov .mc { position:relative; width:68px; height:68px; margin:0 auto; border-radius:50%; border:2px solid rgba(110,236,196,.6); display:grid; place-items:center; }
+.ov .mc::after { content:""; position:absolute; inset:-2px; border-radius:50%; border:2px solid rgba(110,236,196,.5); animation:ripple 2.2s ease-out infinite; }
+.ov .core { width:50px; height:50px; border-radius:50%; background:rgba(110,236,196,.2); color:#6eecc4; display:grid; place-items:center; animation:grow 2.2s ease-in-out infinite; }
+.ov .core svg { width:24px; height:24px; }
+.ov .dots { display:flex; justify-content:center; align-items:center; gap:5px; height:14px; margin:12px 0 10px; }
+.ov .dots i { width:4px; height:10px; border-radius:4px; background:#6eecc4; animation:dot 1.1s ease-in-out infinite; animation-delay:calc(var(--i) * -110ms); }
+@keyframes dot { 0%,100% { transform:scaleY(.45); } 50% { transform:scaleY(1.3); } }
+.ov .status { font-size:18px; font-weight:700; min-height:26px; }
+.ov .fb { color:#6eecc4; font-size:13.5px; font-weight:600; min-height:20px; margin-top:2px; }
+.ov .fb.caret::after { content:"▍"; margin-inline-start:2px; animation:blink 1s steps(1) infinite; }
+.vtitle { direction:ltr; margin-top:14px; }
+.vtitle h3 { margin:0; font-size:20px; line-height:1.3; font-weight:600; }
+.vtitle .chan { display:flex; align-items:center; gap:10px; margin-top:10px; font-size:14px; }
+.vtitle .chan .av { width:36px; height:36px; }
+.vtitle .chan span.m { color:var(--muted); font-size:12px; }
+
+/* ───── סעיפים ───── */
+section.s { padding:72px 0 0; }
+h2 { margin:0 0 12px; font-size:clamp(30px, 4vw, 48px); line-height:1.1; letter-spacing:-.025em; font-weight:800; }
+.lead { color:var(--muted); font-size:18px; max-width:38em; margin:0 0 30px; }
+.two { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.05fr); gap:56px; align-items:start; }
+.upn { list-style:none; margin:0; padding:0; border:1px solid var(--line); border-radius:16px; overflow:hidden; background:var(--bg); box-shadow:var(--shadow); }
+.upn-h { padding:14px 20px; font-weight:700; background:var(--surface); display:flex; justify-content:space-between; align-items:center; }
+.up { display:flex; align-items:center; gap:16px; padding:14px 20px; border-top:1px solid var(--line); transition:background .2s var(--ease); }
+.up:hover { background:var(--surface); }
+.idx { width:20px; text-align:center; font-weight:600; color:var(--muted); }
+.uth { position:relative; width:128px; aspect-ratio:16/9; border-radius:10px; flex:none; background:linear-gradient(135deg, var(--c1), var(--c2)); color:#fff; display:grid; place-items:center; }
+.uth svg { width:28px; height:28px; }
+.ut h3 { margin:0 0 2px; font-size:18px; font-weight:600; }
+.ut p { margin:0; color:var(--muted); font-size:14.5px; line-height:1.45; }
+.vgrid { display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:36px 20px; }
+.vc { display:block; }
+.th { position:relative; aspect-ratio:16/9; border-radius:12px; overflow:hidden; background:linear-gradient(135deg, var(--c1), var(--c2)); color:#fff; transition:border-radius .25s var(--ease), transform .25s var(--ease), box-shadow .25s var(--ease); }
+.th::before { content:""; position:absolute; inset:0; background:repeating-linear-gradient(to bottom, transparent 0 9px, rgba(255,255,255,.22) 9px 10px); mask-image:linear-gradient(to bottom, transparent 20%, #000 35%, #000 65%, transparent 80%); -webkit-mask-image:linear-gradient(to bottom, transparent 20%, #000 35%, #000 65%, transparent 80%); }
+.th .ic { position:absolute; inset:0; margin:auto; width:46px; height:46px; filter:drop-shadow(0 4px 10px rgba(0,0,0,.25)); transition:transform .25s var(--ease); }
+.vc:hover .th { border-radius:4px; transform:scale(1.04); box-shadow:var(--shadow); }
+.vc:hover .th .ic { transform:scale(1.18); }
+.badge { position:absolute; inset-inline-end:8px; bottom:8px; background:rgba(0,0,0,.8); color:#fff; font-size:12px; font-weight:500; padding:2px 6px; border-radius:4px; }
+.ph { position:absolute; left:0; bottom:0; height:3px; width:0; background:var(--red); transition:width 2.5s linear; }
+.vc:hover .ph { width:100%; }
+.vmeta { display:flex; gap:12px; margin-top:12px; }
+.av { width:36px; height:36px; border-radius:50%; background:var(--red); color:#fff; display:grid; place-items:center; flex:none; }
+.av svg { width:18px; height:18px; }
+.vmeta h3 { margin:0; font-size:17px; line-height:1.3; font-weight:600; }
+.vmeta .ch { color:var(--muted); font-size:13px; line-height:1.45; margin-top:2px; }
+.vc > p { margin:10px 0 0; color:var(--muted); font-size:14.5px; line-height:1.5; }
+.tabs { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 22px; }
+.wake { display:flex; align-items:center; gap:12px; flex-wrap:wrap; font-weight:600; color:var(--muted); }
+.wake b { color:var(--ink); background:var(--surface); border-radius:18px 18px 18px 4px; padding:10px 18px; font-size:20px; }
+.sg { border:1px solid var(--line); border-radius:20px; background:var(--bg); box-shadow:var(--shadow); overflow:hidden; }
+.sg .top { display:flex; align-items:center; gap:12px; padding:12px 14px 12px 20px; border-bottom:1px solid var(--line); font-size:17px; }
+.sg .top svg { width:20px; height:20px; color:var(--muted); }
+.sg .top .micb { margin-inline-start:auto; width:36px; height:36px; }
+.sg .top .micb svg { color:var(--ink); }
+.sg ul { list-style:none; margin:0; padding:6px 0; }
+.sg li { display:flex; align-items:center; gap:14px; padding:12px 20px; font-size:18px; font-weight:500; transition:background .15s, opacity .3s var(--ease), translate .3s var(--ease); transition-delay:calc(var(--k) * 35ms); }
+.sg li:hover { background:var(--surface); transition-delay:0s; }
+.sg li svg { width:20px; height:20px; color:var(--muted); flex:none; }
+.sg ul.swap li { opacity:0; translate:0 8px; }
+.desc { background:var(--surface); border-radius:16px; padding:28px 32px; }
+.desc h2 { font-size:30px; margin-bottom:6px; }
+.desc ul { list-style:none; margin:20px 0 0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:14px 36px; }
+.desc li { position:relative; padding-inline-start:22px; }
+.desc li::before { content:""; position:absolute; inset-inline-start:0; top:.55em; width:8px; height:8px; border-radius:50%; background:var(--red); }
+.cm { display:flex; gap:16px; align-items:flex-start; }
+.cm .av { width:44px; height:44px; font-weight:700; font-size:19px; }
+.cm .hd { display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:14px; }
+.cm .hd b { font-size:15px; }
+.cm .cr { background:var(--surface2); border-radius:999px; padding:1px 10px; font-size:12px; font-weight:500; }
+.cm .pn { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:13px; }
+.cm .pn svg { width:14px; height:14px; }
+.cm h3 { margin:6px 0 6px; font-size:26px; }
+.cm p { margin:0 0 16px; max-width:46em; }
+details { background:var(--surface); border-radius:12px; margin-bottom:10px; }
+summary { cursor:pointer; padding:16px 20px; font-weight:600; font-size:17px; list-style:none; display:flex; justify-content:space-between; align-items:center; gap:12px; }
+summary::-webkit-details-marker { display:none; }
+summary::after { content:"+"; font-size:26px; line-height:1; font-weight:400; transition:transform .2s var(--ease); }
+details[open] summary::after { transform:rotate(45deg); }
+details p { margin:0; padding:0 20px 18px; color:var(--muted); }
+.banner { position:relative; overflow:hidden; border-radius:24px; padding:64px 32px; text-align:center; color:#fff; background:linear-gradient(120deg, #ff1f3d, #d4001a 55%, #8f0014); }
+.banner .staff { stroke:rgba(255,255,255,.22); animation:none; width:100%; top:20px; }
+.banner .st-b { top:auto; bottom:10px; }
+.banner h2 { position:relative; font-size:clamp(34px, 5vw, 60px); margin-bottom:10px; }
+.banner p { position:relative; margin:0 0 26px; font-size:19px; opacity:.92; }
+.banner .pb { position:relative; background:#fff; color:#0f0f0f; } .banner .pb:hover { background:#f2f2f2; }
+.banner .bm { position:absolute; width:60px; color:rgba(255,255,255,.22); animation:grow 5s ease-in-out infinite; }
+footer { margin-top:70px; border-top:1px solid var(--line); padding:30px 0 70px; color:var(--muted); font-size:14px; }
+footer .row { display:flex; flex-wrap:wrap; gap:10px 26px; margin-bottom:12px; }
+footer a { color:var(--ink); font-weight:500; text-decoration:none; } footer a:hover { text-decoration:underline; }
+.js .rv { opacity:0; translate:0 18px; transition:opacity .6s var(--ease), translate .6s var(--ease), border-radius .25s var(--ease); }
+.js .rv.in { opacity:1; translate:0 0; }
+
+@media (max-width: 1100px) { .vgrid { grid-template-columns:repeat(3, minmax(0,1fr)); } }
+@media (max-width: 900px) {
+  .hgrid, .two { grid-template-columns:1fr; gap:40px; } .hero { padding-top:32px; }
+  .vgrid { grid-template-columns:repeat(2, minmax(0,1fr)); } .desc ul { grid-template-columns:1fr; }
+  .pill, .search .micb { display:none; } .search { display:none; } .mast .brand { margin-inline-end:auto; }
+}
+@media (max-width: 560px) {
+  .ov { width:min(210px, 62%); padding:12px 10px 10px; border-radius:20px; top:40%; }
+  .ov .mc { width:50px; height:50px; } .ov .core { width:36px; height:36px; } .ov .core svg { width:18px; height:18px; }
+  .ov .dots { margin:8px 0 6px; } .ov .status { font-size:14px; min-height:20px; } .ov .fb { font-size:11.5px; min-height:16px; }
+  .crow { gap:10px; font-size:12px; } .crow svg { width:19px; height:19px; } .crow .vbar, .crow .opt { display:none; } #ptime { white-space:nowrap; }
+  .ctrls { padding:18px 10px 6px; } .ptoast { bottom:50px; font-size:11.5px; } .eqs { bottom:40px; height:60px; }
+  .vgrid { grid-template-columns:1fr; } .wrap { width:calc(100% - 32px); } .ctl .ib { display:none; } .mast .in { padding-inline:16px; gap:10px; }
+  .uth { width:96px; } .desc { padding:22px 20px; } .banner { padding:44px 20px; } .pb { padding:0 20px; } .brand span.t { display:none; }
+}
+@media (prefers-reduced-motion: reduce) { .js .rv { opacity:1; translate:0 0; } }
+</style>
+</head>
+<body>
+<div class="stage" aria-hidden="true"><svg class="staff st1" viewBox="0 0 2400 140" preserveAspectRatio="none" aria-hidden="true"><path d="M0,20.0 L20,22.9 L40,25.7 L60,28.2 L80,30.4 L100,32.1 L120,33.3 L140,33.9 L160,33.9 L180,33.3 L200,32.1 L220,30.4 L240,28.2 L260,25.7 L280,22.9 L300,20.0 L320,17.1 L340,14.3 L360,11.8 L380,9.6 L400,7.9 L420,6.7 L440,6.1 L460,6.1 L480,6.7 L500,7.9 L520,9.6 L540,11.8 L560,14.3 L580,17.1 L600,20.0 L620,22.9 L640,25.7 L660,28.2 L680,30.4 L700,32.1 L720,33.3 L740,33.9 L760,33.9 L780,33.3 L800,32.1 L820,30.4 L840,28.2 L860,25.7 L880,22.9 L900,20.0 L920,17.1 L940,14.3 L960,11.8 L980,9.6 L1000,7.9 L1020,6.7 L1040,6.1 L1060,6.1 L1080,6.7 L1100,7.9 L1120,9.6 L1140,11.8 L1160,14.3 L1180,17.1 L1200,20.0 L1220,22.9 L1240,25.7 L1260,28.2 L1280,30.4 L1300,32.1 L1320,33.3 L1340,33.9 L1360,33.9 L1380,33.3 L1400,32.1 L1420,30.4 L1440,28.2 L1460,25.7 L1480,22.9 L1500,20.0 L1520,17.1 L1540,14.3 L1560,11.8 L1580,9.6 L1600,7.9 L1620,6.7 L1640,6.1 L1660,6.1 L1680,6.7 L1700,7.9 L1720,9.6 L1740,11.8 L1760,14.3 L1780,17.1 L1800,20.0 L1820,22.9 L1840,25.7 L1860,28.2 L1880,30.4 L1900,32.1 L1920,33.3 L1940,33.9 L1960,33.9 L1980,33.3 L2000,32.1 L2020,30.4 L2040,28.2 L2060,25.7 L2080,22.9 L2100,20.0 L2120,17.1 L2140,14.3 L2160,11.8 L2180,9.6 L2200,7.9 L2220,6.7 L2240,6.1 L2260,6.1 L2280,6.7 L2300,7.9 L2320,9.6 L2340,11.8 L2360,14.3 L2380,17.1 L2400,20.0"/><path d="M0,30.4 L20,33.3 L40,35.9 L60,38.3 L80,40.3 L100,41.8 L120,42.7 L140,43.0 L160,42.7 L180,41.8 L200,40.4 L220,38.4 L240,36.1 L260,33.4 L280,30.5 L300,27.6 L320,24.7 L340,22.1 L360,19.7 L380,17.7 L400,16.2 L420,15.3 L440,15.0 L460,15.3 L480,16.2 L500,17.6 L520,19.6 L540,21.9 L560,24.6 L580,27.5 L600,30.4 L620,33.3 L640,35.9 L660,38.3 L680,40.3 L700,41.8 L720,42.7 L740,43.0 L760,42.7 L780,41.8 L800,40.4 L820,38.4 L840,36.1 L860,33.4 L880,30.5 L900,27.6 L920,24.7 L940,22.1 L960,19.7 L980,17.7 L1000,16.2 L1020,15.3 L1040,15.0 L1060,15.3 L1080,16.2 L1100,17.6 L1120,19.6 L1140,21.9 L1160,24.6 L1180,27.5 L1200,30.4 L1220,33.3 L1240,35.9 L1260,38.3 L1280,40.3 L1300,41.8 L1320,42.7 L1340,43.0 L1360,42.7 L1380,41.8 L1400,40.4 L1420,38.4 L1440,36.1 L1460,33.4 L1480,30.5 L1500,27.6 L1520,24.7 L1540,22.1 L1560,19.7 L1580,17.7 L1600,16.2 L1620,15.3 L1640,15.0 L1660,15.3 L1680,16.2 L1700,17.6 L1720,19.6 L1740,21.9 L1760,24.6 L1780,27.5 L1800,30.4 L1820,33.3 L1840,35.9 L1860,38.3 L1880,40.3 L1900,41.8 L1920,42.7 L1940,43.0 L1960,42.7 L1980,41.8 L2000,40.4 L2020,38.4 L2040,36.1 L2060,33.4 L2080,30.5 L2100,27.6 L2120,24.7 L2140,22.1 L2160,19.7 L2180,17.7 L2200,16.2 L2220,15.3 L2240,15.0 L2260,15.3 L2280,16.2 L2300,17.6 L2320,19.6 L2340,21.9 L2360,24.6 L2380,27.5 L2400,30.4"/><path d="M0,40.8 L20,43.6 L40,46.1 L60,48.3 L80,50.1 L100,51.3 L120,51.9 L140,51.9 L160,51.4 L180,50.2 L200,48.5 L220,46.3 L240,43.8 L260,41.0 L280,38.1 L300,35.2 L320,32.4 L340,29.9 L360,27.7 L380,25.9 L400,24.7 L420,24.1 L440,24.1 L460,24.6 L480,25.8 L500,27.5 L520,29.7 L540,32.2 L560,35.0 L580,37.9 L600,40.8 L620,43.6 L640,46.1 L660,48.3 L680,50.1 L700,51.3 L720,51.9 L740,51.9 L760,51.4 L780,50.2 L800,48.5 L820,46.3 L840,43.8 L860,41.0 L880,38.1 L900,35.2 L920,32.4 L940,29.9 L960,27.7 L980,25.9 L1000,24.7 L1020,24.1 L1040,24.1 L1060,24.6 L1080,25.8 L1100,27.5 L1120,29.7 L1140,32.2 L1160,35.0 L1180,37.9 L1200,40.8 L1220,43.6 L1240,46.1 L1260,48.3 L1280,50.1 L1300,51.3 L1320,51.9 L1340,51.9 L1360,51.4 L1380,50.2 L1400,48.5 L1420,46.3 L1440,43.8 L1460,41.0 L1480,38.1 L1500,35.2 L1520,32.4 L1540,29.9 L1560,27.7 L1580,25.9 L1600,24.7 L1620,24.1 L1640,24.1 L1660,24.6 L1680,25.8 L1700,27.5 L1720,29.7 L1740,32.2 L1760,35.0 L1780,37.9 L1800,40.8 L1820,43.6 L1840,46.1 L1860,48.3 L1880,50.1 L1900,51.3 L1920,51.9 L1940,51.9 L1960,51.4 L1980,50.2 L2000,48.5 L2020,46.3 L2040,43.8 L2060,41.0 L2080,38.1 L2100,35.2 L2120,32.4 L2140,29.9 L2160,27.7 L2180,25.9 L2200,24.7 L2220,24.1 L2240,24.1 L2260,24.6 L2280,25.8 L2300,27.5 L2320,29.7 L2340,32.2 L2360,35.0 L2380,37.9 L2400,40.8"/><path d="M0,51.1 L20,53.8 L40,56.2 L60,58.2 L80,59.7 L100,60.7 L120,61.0 L140,60.7 L160,59.9 L180,58.4 L200,56.5 L220,54.2 L240,51.5 L260,48.7 L280,45.7 L300,42.9 L320,40.2 L340,37.8 L360,35.8 L380,34.3 L400,33.3 L420,33.0 L440,33.3 L460,34.1 L480,35.6 L500,37.5 L520,39.8 L540,42.5 L560,45.3 L580,48.3 L600,51.1 L620,53.8 L640,56.2 L660,58.2 L680,59.7 L700,60.7 L720,61.0 L740,60.7 L760,59.9 L780,58.4 L800,56.5 L820,54.2 L840,51.5 L860,48.7 L880,45.7 L900,42.9 L920,40.2 L940,37.8 L960,35.8 L980,34.3 L1000,33.3 L1020,33.0 L1040,33.3 L1060,34.1 L1080,35.6 L1100,37.5 L1120,39.8 L1140,42.5 L1160,45.3 L1180,48.3 L1200,51.1 L1220,53.8 L1240,56.2 L1260,58.2 L1280,59.7 L1300,60.7 L1320,61.0 L1340,60.7 L1360,59.9 L1380,58.4 L1400,56.5 L1420,54.2 L1440,51.5 L1460,48.7 L1480,45.7 L1500,42.9 L1520,40.2 L1540,37.8 L1560,35.8 L1580,34.3 L1600,33.3 L1620,33.0 L1640,33.3 L1660,34.1 L1680,35.6 L1700,37.5 L1720,39.8 L1740,42.5 L1760,45.3 L1780,48.3 L1800,51.1 L1820,53.8 L1840,56.2 L1860,58.2 L1880,59.7 L1900,60.7 L1920,61.0 L1940,60.7 L1960,59.9 L1980,58.4 L2000,56.5 L2020,54.2 L2040,51.5 L2060,48.7 L2080,45.7 L2100,42.9 L2120,40.2 L2140,37.8 L2160,35.8 L2180,34.3 L2200,33.3 L2220,33.0 L2240,33.3 L2260,34.1 L2280,35.6 L2300,37.5 L2320,39.8 L2340,42.5 L2360,45.3 L2380,48.3 L2400,51.1"/><path d="M0,61.5 L20,64.0 L40,66.2 L60,68.0 L80,69.2 L100,69.9 L120,69.9 L140,69.4 L160,68.3 L180,66.6 L200,64.4 L220,61.9 L240,59.2 L260,56.3 L280,53.3 L300,50.5 L320,48.0 L340,45.8 L360,44.0 L380,42.8 L400,42.1 L420,42.1 L440,42.6 L460,43.7 L480,45.4 L500,47.6 L520,50.1 L540,52.8 L560,55.7 L580,58.7 L600,61.5 L620,64.0 L640,66.2 L660,68.0 L680,69.2 L700,69.9 L720,69.9 L740,69.4 L760,68.3 L780,66.6 L800,64.4 L820,61.9 L840,59.2 L860,56.3 L880,53.3 L900,50.5 L920,48.0 L940,45.8 L960,44.0 L980,42.8 L1000,42.1 L1020,42.1 L1040,42.6 L1060,43.7 L1080,45.4 L1100,47.6 L1120,50.1 L1140,52.8 L1160,55.7 L1180,58.7 L1200,61.5 L1220,64.0 L1240,66.2 L1260,68.0 L1280,69.2 L1300,69.9 L1320,69.9 L1340,69.4 L1360,68.3 L1380,66.6 L1400,64.4 L1420,61.9 L1440,59.2 L1460,56.3 L1480,53.3 L1500,50.5 L1520,48.0 L1540,45.8 L1560,44.0 L1580,42.8 L1600,42.1 L1620,42.1 L1640,42.6 L1660,43.7 L1680,45.4 L1700,47.6 L1720,50.1 L1740,52.8 L1760,55.7 L1780,58.7 L1800,61.5 L1820,64.0 L1840,66.2 L1860,68.0 L1880,69.2 L1900,69.9 L1920,69.9 L1940,69.4 L1960,68.3 L1980,66.6 L2000,64.4 L2020,61.9 L2040,59.2 L2060,56.3 L2080,53.3 L2100,50.5 L2120,48.0 L2140,45.8 L2160,44.0 L2180,42.8 L2200,42.1 L2220,42.1 L2240,42.6 L2260,43.7 L2280,45.4 L2300,47.6 L2320,50.1 L2340,52.8 L2360,55.7 L2380,58.7 L2400,61.5"/></svg><svg class="staff st2" viewBox="0 0 2400 140" preserveAspectRatio="none" aria-hidden="true"><path d="M0,47.3 L20,47.9 L40,48.0 L60,47.6 L80,46.9 L100,45.7 L120,44.1 L140,42.2 L160,39.9 L180,37.5 L200,34.8 L220,32.0 L240,29.2 L260,26.4 L280,23.7 L300,21.1 L320,18.8 L340,16.7 L360,15.0 L380,13.6 L400,12.7 L420,12.1 L440,12.0 L460,12.4 L480,13.1 L500,14.3 L520,15.9 L540,17.8 L560,20.1 L580,22.5 L600,25.2 L620,28.0 L640,30.8 L660,33.6 L680,36.3 L700,38.9 L720,41.2 L740,43.3 L760,45.0 L780,46.4 L800,47.3 L820,47.9 L840,48.0 L860,47.6 L880,46.9 L900,45.7 L920,44.1 L940,42.2 L960,39.9 L980,37.5 L1000,34.8 L1020,32.0 L1040,29.2 L1060,26.4 L1080,23.7 L1100,21.1 L1120,18.8 L1140,16.7 L1160,15.0 L1180,13.6 L1200,12.7 L1220,12.1 L1240,12.0 L1260,12.4 L1280,13.1 L1300,14.3 L1320,15.9 L1340,17.8 L1360,20.1 L1380,22.5 L1400,25.2 L1420,28.0 L1440,30.8 L1460,33.6 L1480,36.3 L1500,38.9 L1520,41.2 L1540,43.3 L1560,45.0 L1580,46.4 L1600,47.3 L1620,47.9 L1640,48.0 L1660,47.6 L1680,46.9 L1700,45.7 L1720,44.1 L1740,42.2 L1760,39.9 L1780,37.5 L1800,34.8 L1820,32.0 L1840,29.2 L1860,26.4 L1880,23.7 L1900,21.1 L1920,18.8 L1940,16.7 L1960,15.0 L1980,13.6 L2000,12.7 L2020,12.1 L2040,12.0 L2060,12.4 L2080,13.1 L2100,14.3 L2120,15.9 L2140,17.8 L2160,20.1 L2180,22.5 L2200,25.2 L2220,28.0 L2240,30.8 L2260,33.6 L2280,36.3 L2300,38.9 L2320,41.2 L2340,43.3 L2360,45.0 L2380,46.4 L2400,47.3"/><path d="M0,56.7 L20,57.0 L40,56.8 L60,56.2 L80,55.1 L100,53.7 L120,51.9 L140,49.8 L160,47.4 L180,44.8 L200,42.1 L220,39.2 L240,36.4 L260,33.7 L280,31.0 L300,28.6 L320,26.4 L340,24.6 L360,23.1 L380,22.0 L400,21.3 L420,21.0 L440,21.2 L460,21.8 L480,22.9 L500,24.3 L520,26.1 L540,28.2 L560,30.6 L580,33.2 L600,35.9 L620,38.8 L640,41.6 L660,44.3 L680,47.0 L700,49.4 L720,51.6 L740,53.4 L760,54.9 L780,56.0 L800,56.7 L820,57.0 L840,56.8 L860,56.2 L880,55.1 L900,53.7 L920,51.9 L940,49.8 L960,47.4 L980,44.8 L1000,42.1 L1020,39.2 L1040,36.4 L1060,33.7 L1080,31.0 L1100,28.6 L1120,26.4 L1140,24.6 L1160,23.1 L1180,22.0 L1200,21.3 L1220,21.0 L1240,21.2 L1260,21.8 L1280,22.9 L1300,24.3 L1320,26.1 L1340,28.2 L1360,30.6 L1380,33.2 L1400,35.9 L1420,38.8 L1440,41.6 L1460,44.3 L1480,47.0 L1500,49.4 L1520,51.6 L1540,53.4 L1560,54.9 L1580,56.0 L1600,56.7 L1620,57.0 L1640,56.8 L1660,56.2 L1680,55.1 L1700,53.7 L1720,51.9 L1740,49.8 L1760,47.4 L1780,44.8 L1800,42.1 L1820,39.2 L1840,36.4 L1860,33.7 L1880,31.0 L1900,28.6 L1920,26.4 L1940,24.6 L1960,23.1 L1980,22.0 L2000,21.3 L2020,21.0 L2040,21.2 L2060,21.8 L2080,22.9 L2100,24.3 L2120,26.1 L2140,28.2 L2160,30.6 L2180,33.2 L2200,35.9 L2220,38.8 L2240,41.6 L2260,44.3 L2280,47.0 L2300,49.4 L2320,51.6 L2340,53.4 L2360,54.9 L2380,56.0 L2400,56.7"/><path d="M0,66.0 L20,65.9 L40,65.5 L60,64.6 L80,63.3 L100,61.6 L120,59.6 L140,57.3 L160,54.8 L180,52.1 L200,49.3 L220,46.4 L240,43.7 L260,41.0 L280,38.5 L300,36.2 L320,34.2 L340,32.6 L360,31.3 L380,30.5 L400,30.0 L420,30.1 L440,30.5 L460,31.4 L480,32.7 L500,34.4 L520,36.4 L540,38.7 L560,41.2 L580,43.9 L600,46.7 L620,49.6 L640,52.3 L660,55.0 L680,57.5 L700,59.8 L720,61.8 L740,63.4 L760,64.7 L780,65.5 L800,66.0 L820,65.9 L840,65.5 L860,64.6 L880,63.3 L900,61.6 L920,59.6 L940,57.3 L960,54.8 L980,52.1 L1000,49.3 L1020,46.4 L1040,43.7 L1060,41.0 L1080,38.5 L1100,36.2 L1120,34.2 L1140,32.6 L1160,31.3 L1180,30.5 L1200,30.0 L1220,30.1 L1240,30.5 L1260,31.4 L1280,32.7 L1300,34.4 L1320,36.4 L1340,38.7 L1360,41.2 L1380,43.9 L1400,46.7 L1420,49.6 L1440,52.3 L1460,55.0 L1480,57.5 L1500,59.8 L1520,61.8 L1540,63.4 L1560,64.7 L1580,65.5 L1600,66.0 L1620,65.9 L1640,65.5 L1660,64.6 L1680,63.3 L1700,61.6 L1720,59.6 L1740,57.3 L1760,54.8 L1780,52.1 L1800,49.3 L1820,46.4 L1840,43.7 L1860,41.0 L1880,38.5 L1900,36.2 L1920,34.2 L1940,32.6 L1960,31.3 L1980,30.5 L2000,30.0 L2020,30.1 L2040,30.5 L2060,31.4 L2080,32.7 L2100,34.4 L2120,36.4 L2140,38.7 L2160,41.2 L2180,43.9 L2200,46.7 L2220,49.6 L2240,52.3 L2260,55.0 L2280,57.5 L2300,59.8 L2320,61.8 L2340,63.4 L2360,64.7 L2380,65.5 L2400,66.0"/><path d="M0,75.0 L20,74.7 L40,73.9 L60,72.8 L80,71.2 L100,69.4 L120,67.2 L140,64.7 L160,62.1 L180,59.3 L200,56.5 L220,53.7 L240,50.9 L260,48.4 L280,46.0 L300,43.9 L320,42.1 L340,40.7 L360,39.7 L380,39.1 L400,39.0 L420,39.3 L440,40.1 L460,41.2 L480,42.8 L500,44.6 L520,46.8 L540,49.3 L560,51.9 L580,54.7 L600,57.5 L620,60.3 L640,63.1 L660,65.6 L680,68.0 L700,70.1 L720,71.9 L740,73.3 L760,74.3 L780,74.9 L800,75.0 L820,74.7 L840,73.9 L860,72.8 L880,71.2 L900,69.4 L920,67.2 L940,64.7 L960,62.1 L980,59.3 L1000,56.5 L1020,53.7 L1040,50.9 L1060,48.4 L1080,46.0 L1100,43.9 L1120,42.1 L1140,40.7 L1160,39.7 L1180,39.1 L1200,39.0 L1220,39.3 L1240,40.1 L1260,41.2 L1280,42.8 L1300,44.6 L1320,46.8 L1340,49.3 L1360,51.9 L1380,54.7 L1400,57.5 L1420,60.3 L1440,63.1 L1460,65.6 L1480,68.0 L1500,70.1 L1520,71.9 L1540,73.3 L1560,74.3 L1580,74.9 L1600,75.0 L1620,74.7 L1640,73.9 L1660,72.8 L1680,71.2 L1700,69.4 L1720,67.2 L1740,64.7 L1760,62.1 L1780,59.3 L1800,56.5 L1820,53.7 L1840,50.9 L1860,48.4 L1880,46.0 L1900,43.9 L1920,42.1 L1940,40.7 L1960,39.7 L1980,39.1 L2000,39.0 L2020,39.3 L2040,40.1 L2060,41.2 L2080,42.8 L2100,44.6 L2120,46.8 L2140,49.3 L2160,51.9 L2180,54.7 L2200,57.5 L2220,60.3 L2240,63.1 L2260,65.6 L2280,68.0 L2300,70.1 L2320,71.9 L2340,73.3 L2360,74.3 L2380,74.9 L2400,75.0"/><path d="M0,83.8 L20,83.3 L40,82.3 L60,80.9 L80,79.1 L100,77.0 L120,74.6 L140,72.0 L160,69.3 L180,66.5 L200,63.7 L220,60.9 L240,58.3 L260,55.8 L280,53.6 L300,51.7 L320,50.2 L340,49.0 L360,48.3 L380,48.0 L400,48.2 L420,48.7 L440,49.7 L460,51.1 L480,52.9 L500,55.0 L520,57.4 L540,60.0 L560,62.7 L580,65.5 L600,68.3 L620,71.1 L640,73.7 L660,76.2 L680,78.4 L700,80.3 L720,81.8 L740,83.0 L760,83.7 L780,84.0 L800,83.8 L820,83.3 L840,82.3 L860,80.9 L880,79.1 L900,77.0 L920,74.6 L940,72.0 L960,69.3 L980,66.5 L1000,63.7 L1020,60.9 L1040,58.3 L1060,55.8 L1080,53.6 L1100,51.7 L1120,50.2 L1140,49.0 L1160,48.3 L1180,48.0 L1200,48.2 L1220,48.7 L1240,49.7 L1260,51.1 L1280,52.9 L1300,55.0 L1320,57.4 L1340,60.0 L1360,62.7 L1380,65.5 L1400,68.3 L1420,71.1 L1440,73.7 L1460,76.2 L1480,78.4 L1500,80.3 L1520,81.8 L1540,83.0 L1560,83.7 L1580,84.0 L1600,83.8 L1620,83.3 L1640,82.3 L1660,80.9 L1680,79.1 L1700,77.0 L1720,74.6 L1740,72.0 L1760,69.3 L1780,66.5 L1800,63.7 L1820,60.9 L1840,58.3 L1860,55.8 L1880,53.6 L1900,51.7 L1920,50.2 L1940,49.0 L1960,48.3 L1980,48.0 L2000,48.2 L2020,48.7 L2040,49.7 L2060,51.1 L2080,52.9 L2100,55.0 L2120,57.4 L2140,60.0 L2160,62.7 L2180,65.5 L2200,68.3 L2220,71.1 L2240,73.7 L2260,76.2 L2280,78.4 L2300,80.3 L2320,81.8 L2340,83.0 L2360,83.7 L2380,84.0 L2400,83.8"/></svg><svg class="staff st3" viewBox="0 0 2400 140" preserveAspectRatio="none" aria-hidden="true"><path d="M0,28.1 L20,25.5 L40,22.6 L60,19.5 L80,16.4 L100,13.6 L120,11.2 L140,9.4 L160,8.3 L180,8.0 L200,8.6 L220,9.9 L240,11.9 L260,14.5 L280,17.4 L300,20.5 L320,23.6 L340,26.4 L360,28.8 L380,30.6 L400,31.7 L420,32.0 L440,31.4 L460,30.1 L480,28.1 L500,25.5 L520,22.6 L540,19.5 L560,16.4 L580,13.6 L600,11.2 L620,9.4 L640,8.3 L660,8.0 L680,8.6 L700,9.9 L720,11.9 L740,14.5 L760,17.4 L780,20.5 L800,23.6 L820,26.4 L840,28.8 L860,30.6 L880,31.7 L900,32.0 L920,31.4 L940,30.1 L960,28.1 L980,25.5 L1000,22.6 L1020,19.5 L1040,16.4 L1060,13.6 L1080,11.2 L1100,9.4 L1120,8.3 L1140,8.0 L1160,8.6 L1180,9.9 L1200,11.9 L1220,14.5 L1240,17.4 L1260,20.5 L1280,23.6 L1300,26.4 L1320,28.8 L1340,30.6 L1360,31.7 L1380,32.0 L1400,31.4 L1420,30.1 L1440,28.1 L1460,25.5 L1480,22.6 L1500,19.5 L1520,16.4 L1540,13.6 L1560,11.2 L1580,9.4 L1600,8.3 L1620,8.0 L1640,8.6 L1660,9.9 L1680,11.9 L1700,14.5 L1720,17.4 L1740,20.5 L1760,23.6 L1780,26.4 L1800,28.8 L1820,30.6 L1840,31.7 L1860,32.0 L1880,31.4 L1900,30.1 L1920,28.1 L1940,25.5 L1960,22.6 L1980,19.5 L2000,16.4 L2020,13.6 L2040,11.2 L2060,9.4 L2080,8.3 L2100,8.0 L2120,8.6 L2140,9.9 L2160,11.9 L2180,14.5 L2200,17.4 L2220,20.5 L2240,23.6 L2260,26.4 L2280,28.8 L2300,30.6 L2320,31.7 L2340,32.0 L2360,31.4 L2380,30.1 L2400,28.1"/><path d="M0,36.2 L20,33.4 L40,30.4 L60,27.3 L80,24.3 L100,21.6 L120,19.4 L140,17.9 L160,17.1 L180,17.1 L200,18.0 L220,19.6 L240,21.8 L260,24.6 L280,27.6 L300,30.7 L320,33.7 L340,36.4 L360,38.6 L380,40.1 L400,40.9 L420,40.9 L440,40.0 L460,38.4 L480,36.2 L500,33.4 L520,30.4 L540,27.3 L560,24.3 L580,21.6 L600,19.4 L620,17.9 L640,17.1 L660,17.1 L680,18.0 L700,19.6 L720,21.8 L740,24.6 L760,27.6 L780,30.7 L800,33.7 L820,36.4 L840,38.6 L860,40.1 L880,40.9 L900,40.9 L920,40.0 L940,38.4 L960,36.2 L980,33.4 L1000,30.4 L1020,27.3 L1040,24.3 L1060,21.6 L1080,19.4 L1100,17.9 L1120,17.1 L1140,17.1 L1160,18.0 L1180,19.6 L1200,21.8 L1220,24.6 L1240,27.6 L1260,30.7 L1280,33.7 L1300,36.4 L1320,38.6 L1340,40.1 L1360,40.9 L1380,40.9 L1400,40.0 L1420,38.4 L1440,36.2 L1460,33.4 L1480,30.4 L1500,27.3 L1520,24.3 L1540,21.6 L1560,19.4 L1580,17.9 L1600,17.1 L1620,17.1 L1640,18.0 L1660,19.6 L1680,21.8 L1700,24.6 L1720,27.6 L1740,30.7 L1760,33.7 L1780,36.4 L1800,38.6 L1820,40.1 L1840,40.9 L1860,40.9 L1880,40.0 L1900,38.4 L1920,36.2 L1940,33.4 L1960,30.4 L1980,27.3 L2000,24.3 L2020,21.6 L2040,19.4 L2060,17.9 L2080,17.1 L2100,17.1 L2120,18.0 L2140,19.6 L2160,21.8 L2180,24.6 L2200,27.6 L2220,30.7 L2240,33.7 L2260,36.4 L2280,38.6 L2300,40.1 L2320,40.9 L2340,40.9 L2360,40.0 L2380,38.4 L2400,36.2"/><path d="M0,44.2 L20,41.3 L40,38.2 L60,35.1 L80,32.2 L100,29.7 L120,27.7 L140,26.5 L160,26.0 L180,26.4 L200,27.5 L220,29.4 L240,31.8 L260,34.7 L280,37.8 L300,40.9 L320,43.8 L340,46.3 L360,48.3 L380,49.5 L400,50.0 L420,49.6 L440,48.5 L460,46.6 L480,44.2 L500,41.3 L520,38.2 L540,35.1 L560,32.2 L580,29.7 L600,27.7 L620,26.5 L640,26.0 L660,26.4 L680,27.5 L700,29.4 L720,31.8 L740,34.7 L760,37.8 L780,40.9 L800,43.8 L820,46.3 L840,48.3 L860,49.5 L880,50.0 L900,49.6 L920,48.5 L940,46.6 L960,44.2 L980,41.3 L1000,38.2 L1020,35.1 L1040,32.2 L1060,29.7 L1080,27.7 L1100,26.5 L1120,26.0 L1140,26.4 L1160,27.5 L1180,29.4 L1200,31.8 L1220,34.7 L1240,37.8 L1260,40.9 L1280,43.8 L1300,46.3 L1320,48.3 L1340,49.5 L1360,50.0 L1380,49.6 L1400,48.5 L1420,46.6 L1440,44.2 L1460,41.3 L1480,38.2 L1500,35.1 L1520,32.2 L1540,29.7 L1560,27.7 L1580,26.5 L1600,26.0 L1620,26.4 L1640,27.5 L1660,29.4 L1680,31.8 L1700,34.7 L1720,37.8 L1740,40.9 L1760,43.8 L1780,46.3 L1800,48.3 L1820,49.5 L1840,50.0 L1860,49.6 L1880,48.5 L1900,46.6 L1920,44.2 L1940,41.3 L1960,38.2 L1980,35.1 L2000,32.2 L2020,29.7 L2040,27.7 L2060,26.5 L2080,26.0 L2100,26.4 L2120,27.5 L2140,29.4 L2160,31.8 L2180,34.7 L2200,37.8 L2220,40.9 L2240,43.8 L2260,46.3 L2280,48.3 L2300,49.5 L2320,50.0 L2340,49.6 L2360,48.5 L2380,46.6 L2400,44.2"/><path d="M0,52.1 L20,49.1 L40,46.0 L60,43.0 L80,40.2 L100,37.8 L120,36.2 L140,35.2 L160,35.0 L180,35.7 L200,37.1 L220,39.2 L240,41.9 L260,44.9 L280,48.0 L300,51.0 L320,53.8 L340,56.2 L360,57.8 L380,58.8 L400,59.0 L420,58.3 L440,56.9 L460,54.8 L480,52.1 L500,49.1 L520,46.0 L540,43.0 L560,40.2 L580,37.8 L600,36.2 L620,35.2 L640,35.0 L660,35.7 L680,37.1 L700,39.2 L720,41.9 L740,44.9 L760,48.0 L780,51.0 L800,53.8 L820,56.2 L840,57.8 L860,58.8 L880,59.0 L900,58.3 L920,56.9 L940,54.8 L960,52.1 L980,49.1 L1000,46.0 L1020,43.0 L1040,40.2 L1060,37.8 L1080,36.2 L1100,35.2 L1120,35.0 L1140,35.7 L1160,37.1 L1180,39.2 L1200,41.9 L1220,44.9 L1240,48.0 L1260,51.0 L1280,53.8 L1300,56.2 L1320,57.8 L1340,58.8 L1360,59.0 L1380,58.3 L1400,56.9 L1420,54.8 L1440,52.1 L1460,49.1 L1480,46.0 L1500,43.0 L1520,40.2 L1540,37.8 L1560,36.2 L1580,35.2 L1600,35.0 L1620,35.7 L1640,37.1 L1660,39.2 L1680,41.9 L1700,44.9 L1720,48.0 L1740,51.0 L1760,53.8 L1780,56.2 L1800,57.8 L1820,58.8 L1840,59.0 L1860,58.3 L1880,56.9 L1900,54.8 L1920,52.1 L1940,49.1 L1960,46.0 L1980,43.0 L2000,40.2 L2020,37.8 L2040,36.2 L2060,35.2 L2080,35.0 L2100,35.7 L2120,37.1 L2140,39.2 L2160,41.9 L2180,44.9 L2200,48.0 L2220,51.0 L2240,53.8 L2260,56.2 L2280,57.8 L2300,58.8 L2320,59.0 L2340,58.3 L2360,56.9 L2380,54.8 L2400,52.1"/><path d="M0,60.0 L20,57.0 L40,53.8 L60,50.8 L80,48.2 L100,46.1 L120,44.7 L140,44.0 L160,44.2 L180,45.2 L200,46.9 L220,49.2 L240,52.0 L260,55.0 L280,58.2 L300,61.2 L320,63.8 L340,65.9 L360,67.3 L380,68.0 L400,67.8 L420,66.8 L440,65.1 L460,62.8 L480,60.0 L500,57.0 L520,53.8 L540,50.8 L560,48.2 L580,46.1 L600,44.7 L620,44.0 L640,44.2 L660,45.2 L680,46.9 L700,49.2 L720,52.0 L740,55.0 L760,58.2 L780,61.2 L800,63.8 L820,65.9 L840,67.3 L860,68.0 L880,67.8 L900,66.8 L920,65.1 L940,62.8 L960,60.0 L980,57.0 L1000,53.8 L1020,50.8 L1040,48.2 L1060,46.1 L1080,44.7 L1100,44.0 L1120,44.2 L1140,45.2 L1160,46.9 L1180,49.2 L1200,52.0 L1220,55.0 L1240,58.2 L1260,61.2 L1280,63.8 L1300,65.9 L1320,67.3 L1340,68.0 L1360,67.8 L1380,66.8 L1400,65.1 L1420,62.8 L1440,60.0 L1460,57.0 L1480,53.8 L1500,50.8 L1520,48.2 L1540,46.1 L1560,44.7 L1580,44.0 L1600,44.2 L1620,45.2 L1640,46.9 L1660,49.2 L1680,52.0 L1700,55.0 L1720,58.2 L1740,61.2 L1760,63.8 L1780,65.9 L1800,67.3 L1820,68.0 L1840,67.8 L1860,66.8 L1880,65.1 L1900,62.8 L1920,60.0 L1940,57.0 L1960,53.8 L1980,50.8 L2000,48.2 L2020,46.1 L2040,44.7 L2060,44.0 L2080,44.2 L2100,45.2 L2120,46.9 L2140,49.2 L2160,52.0 L2180,55.0 L2200,58.2 L2220,61.2 L2240,63.8 L2260,65.9 L2280,67.3 L2300,68.0 L2320,67.8 L2340,66.8 L2360,65.1 L2380,62.8 L2400,60.0"/></svg><div id="notes"></div></div>
+
+<header class="mast">
+  <div class="in">
+    <a class="brand" href="#top"><span class="logo"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg></span><span class="t">Voice Assistant</span></a>
+    <div class="search" aria-hidden="true">
+      <div class="pill"><span class="tx" id="typed"></span><span class="sb"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M10.5 3a7.5 7.5 0 105.3 12.8l4.2 4.2 1.4-1.4-4.2-4.2A7.5 7.5 0 0010.5 3zm0 2a5.5 5.5 0 110 11 5.5 5.5 0 010-11z"/></svg></span></div>
+      <span class="micb"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg></span>
+    </div>
+    <div class="ctl">
+      <div class="lang" role="group" aria-label="Language">
+        <button type="button" data-lang="he" aria-pressed="true">עב</button>
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+        <button type="button" data-lang="ro" aria-pressed="false">RO</button>
+      </div>
+      <button type="button" class="ib" id="themeBtn" data-i18n-aria="theme_btn" aria-label="החלפה בין מצב בהיר לכהה"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3.5a8.5 8.5 0 010 17z"/></svg></button>
+      <button type="button" class="ib" id="mv" aria-pressed="true" data-i18n-aria="motion_btn" aria-label="הפעלה או כיבוי של תנועה"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M2.5 12c2-7 4-7 6 0s4 7 6 0 4-7 6 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <a class="pb red sm" href="https://chromewebstore.google.com/detail/youtube-voice-assistant/edhhpgeefjdbbimmpbpapdaoeofklcok"><span data-i18n="cta">הוסף לכרום</span></a>
+    </div>
+  </div>
+  <div class="chipbar"><div class="in" role="navigation" aria-label="Sections"><a class="chip nv" href="#top" data-sec="top" aria-current="true" data-i18n="nav_all">הכול</a><a class="chip nv" href="#how" data-sec="how" data-i18n="nav_how">איך זה עובד</a><a class="chip nv" href="#can" data-sec="can" data-i18n="nav_can">מה הוא יודע</a><a class="chip nv" href="#langs" data-sec="langs" data-i18n="nav_langs">שפות</a><a class="chip nv" href="#know" data-sec="know" data-i18n="nav_know">כדאי לדעת</a><a class="chip nv" href="#privacy" data-sec="privacy" data-i18n="nav_privacy">פרטיות</a><a class="chip nv" href="#faq" data-sec="faq" data-i18n="nav_faq">שאלות</a></div></div>
+</header>
+
+<main id="top">
+  <section class="hero" data-sec-id="top">
+    <div class="wrap hgrid">
+      <div>
+        <span class="kick"><span class="m"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg></span><span data-i18n="badge">תוסף לדפדפן Chrome</span></span>
+        <h1><span data-i18n="h1a">יוטיוב</span><span class="hl" data-i18n="h1b">בלי ידיים.</span></h1>
+        <p class="sub" data-i18n="sub">ידיים מלאות בצק, מברג ביד, או סתם רחוק על הספה? אומרים מה רוצים, והסרטון עושה.</p>
+        <div class="cta">
+          <a class="pb red" href="https://chromewebstore.google.com/detail/youtube-voice-assistant/edhhpgeefjdbbimmpbpapdaoeofklcok"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg><span data-i18n="cta">הוסף לכרום</span></a>
+          <a class="pb gray" href="#how"><span data-i18n="cta2">איך זה עובד</span></a>
+        </div>
+        <div class="mini" aria-label="Languages"><span>עברית</span><span>English</span><span>Română</span><span>Русский</span><span>العربية</span><span>Español</span><span>Français</span></div>
+      </div>
+      <div class="player-wrap">
+        <div class="pl" id="pl" aria-hidden="true">
+          <div class="screen">
+            <div class="art" id="art">
+              <svg class="bn" viewBox="0 0 24 24" fill="currentColor"><ellipse cx="6" cy="18" rx="3.6" ry="2.8" transform="rotate(-22 6 18)"/><ellipse cx="17" cy="16" rx="3.6" ry="2.8" transform="rotate(-22 17 16)"/><rect x="8.6" y="5" width="1.8" height="13"/><rect x="19.6" y="3" width="1.8" height="13"/><path d="M8.6 5L21.4 3v3.4L8.6 8.4z"/></svg>
+              <svg class="bn bn2" viewBox="0 0 24 24" fill="currentColor"><ellipse cx="8" cy="18" rx="4.4" ry="3.3" transform="rotate(-22 8 18)"/><rect x="11.4" y="3" width="2" height="15"/><path d="M13.4 3c0 4.5 6.6 4.6 6.6 10.2-1.6-3-4.4-3.8-6.6-3.8z"/></svg>
+              <div class="eqs" id="eqs"></div>
+            </div>
+            <span class="adtag">Ad</span><span class="skipb">Skip ▸|</span>
+            <div class="pause-ic"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg></div>
+            <div class="ov" id="ov">
+              <div class="mc"><div class="core"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg></div></div>
+              <div class="dots"><i style="--i:0"></i><i style="--i:1"></i><i style="--i:2"></i><i style="--i:3"></i><i style="--i:4"></i><i style="--i:5"></i><i style="--i:6"></i><i style="--i:7"></i><i style="--i:8"></i></div>
+              <div class="status" id="dStatus">Listening for command...</div>
+              <div class="fb" id="dFb">&nbsp;</div>
+            </div>
+            <div class="ptoast" id="ptoast"></div>
+            <div class="ctrls">
+              <div class="track"><i class="prog" id="prog"></i><b class="pdot" id="pdot"></b></div>
+              <div class="crow"><span id="ppIc"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M8 5v14l11-7z"/></svg></span><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M6 6l8.5 6L6 18zM16 6h2v12h-2z"/></svg><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M3 9v6h4l5 4V5L7 9zm13.5 3a4.5 4.5 0 00-2.5-4v8a4.5 4.5 0 002.5-4z"/></svg><span class="vbar"><i id="vfill"></i></span><span id="ptime">0:24 / 4:32</span><span class="sp"></span><span class="opt"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 11h3M13 11h4M7 15h5M14 15h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><span class="opt"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+            </div>
+          </div>
+        </div>
+        <div class="vtitle" aria-hidden="true">
+          <h3 id="vtitle">Morning Mix</h3>
+          <div class="chan"><span class="av"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg></span><div><b>Voice Assistant</b><div class="m" style="color:var(--muted);font-size:12px" data-i18n="demo_cap">ככה זה נראה אצלך על המסך</div></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="s" id="how">
+    <div class="wrap two">
+      <div class="rv"><h2 data-i18n="how_h">שלושה צעדים וזה עובד</h2><p class="lead" data-i18n="how_p">בלי הגדרות מסובכות ובלי הרשמה. שלושה צעדים והוא מקשיב.</p></div>
+      <ol class="upn rv"><li class="upn-h"><span data-i18n="upnext">הבא בתור</span></li><li class="up rv" style="--c1:#ff3d54;--c2:#ff9a4c"><span class="idx">1</span><div class="uth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v10m0 0l-4-4m4 4l4-4M5 19h14"/></svg></div><div class="ut"><h3 data-i18n="s1h">מתקינים</h3><p data-i18n="s1p">מחנות התוספים של Chrome, בלחיצה אחת.</p></div></li><li class="up rv" style="--c1:#1e7bff;--c2:#3fd5ff"><span class="idx">2</span><div class="uth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M10 9l5 3-5 3z"/></svg></div><div class="ut"><h3 data-i18n="s2h">נכנסים ליוטיוב</h3><p data-i18n="s2p">לוחצים פעם אחת בכל מקום בדף, ומאשרים לדפדפן להשתמש במיקרופון.</p></div></li><li class="up rv" style="--c1:#00a884;--c2:#7ee8c1"><span class="idx">3</span><div class="uth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M6.5 11a5.5 5.5 0 0011 0M12 16.5V21"/></svg></div><div class="ut"><h3 data-i18n="s3h">אומרים ״היי יוטיוב״</h3><p data-i18n="s3p">ואחריה את מה שרוצים. אפשר גם ללחוץ על כפתור המיקרופון בנגן.</p></div></li></ol>
+    </div>
+  </section>
+
+  <section class="s" id="can">
+    <div class="wrap">
+      <h2 class="rv" data-i18n="can_h">מה הוא יודע לעשות</h2>
+      <p class="lead rv" data-i18n="can_p">הנה העיקרים. אין צורך לזכור ניסוחים מדויקים. אומרים את זה בדרך שלך, והתוסף מבין הרבה וריאציות.</p>
+      <div class="vgrid"><article class="vc rv" style="--c1:#ff3d54;--c2:#ff9a4c"><div class="th"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg><span class="badge" data-i18n="tag_voice">קולי</span><i class="ph"></i></div><div class="vmeta"><span class="av"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg></span><div><h3 data-i18n="n1h">עצירה והמשך</h3><div class="ch">Voice Assistant<br><span data-i18n="meta_line">בשבע שפות</span></div></div></div><p data-i18n="n1p">עוצרים את הסרטון, ומחזירים אותו לנגן מאותה נקודה.</p></article><article class="vc rv" style="--c1:#7b5cff;--c2:#d27bff"><div class="th"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/></svg><span class="badge" data-i18n="tag_voice">קולי</span><i class="ph"></i></div><div class="vmeta"><span class="av"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg></span><div><h3 data-i18n="n2h">קדימה ואחורה בזמן</h3><div class="ch">Voice Assistant<br><span data-i18n="meta_line">בשבע שפות</span></div></div></div><p data-i18n="n2p">רצים כמה שניות קדימה או אחורה, או קופצים ישר לדקה מסוימת.</p></article><article class="vc rv" style="--c1:#1e7bff;--c2:#3fd5ff"><div class="th"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5v14M19 5v14M9 12h6M12 9l3 3-3 3"/></svg><span class="badge" data-i18n="tag_voice">קולי</span><i class="ph"></i></div><div class="vmeta"><span class="av"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg></span><div><h3 data-i18n="n3h">להתחלה או לסוף</h3><div class="ch">Voice Assistant<br><span data-i18n="meta_line">בשבע שפות</span></div></div></div><p data-i18n="n3p">חוזרים לתחילת הסרטון, או קופצים לסופו.</p></article><article class="vc rv" style="--c1:#00a884;--c2:#7ee8c1"><div class="th"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V6l10-2v12"/><circle cx="6.8" cy="18" r="2.6"/><circle cx="16.8" cy="16" r="2.6"/></svg><span class="badge" data-i18n="tag_voice">קולי</span><i class="ph"></i></div><div class="vmeta"><span class="av"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg></span><div><h3 data-i18n="n4h">מעבר בין שירים</h3><div class="ch">Voice Assistant<br><span data-i18n="meta_line">בשבע שפות</span></div></div></div><p data-i18n="n4p">לשיר או לסרטון הבא והקודם, ואפשר גם לדלג על כמה בבת אחת.</p></article><article class="vc rv" style="--c1:#ff4f9a;--c2:#ffa6cf"><div class="th"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l5 5"/></svg><span class="badge" data-i18n="tag_voice">קולי</span><i class="ph"></i></div><div class="vmeta"><span class="av"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg></span><div><h3 data-i18n="n5h">חיפוש לפי שם</h3><div class="ch">Voice Assistant<br><span data-i18n="meta_line">בשבע שפות</span></div></div></div><p data-i18n="n5p">אומרים שם של שיר או של זמר, והתוסף מחפש ומנגן את התוצאה הראשונה. אם זה לא זה, מבקשים תוצאה אחרת.</p></article><article class="vc rv" style="--c1:#3b4cca;--c2:#8a9bff"><div class="th"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l9 6-9 6z"/><path d="M19 6v12"/></svg><span class="badge" data-i18n="tag_voice">קולי</span><i class="ph"></i></div><div class="vmeta"><span class="av"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg></span><div><h3 data-i18n="n6h">פרסומות</h3><div class="ch">Voice Assistant<br><span data-i18n="meta_line">בשבע שפות</span></div></div></div><p data-i18n="n6p">בפרסומות שיוטיוב מאפשרת לדלג עליהן, התוסף לוחץ על כפתור הדילוג או מעביר את הפרסומת ישר לסיומה. פרסומות שאי אפשר לדלג עליהן ממשיכות כרגיל.</p></article><article class="vc rv" style="--c1:#f5a300;--c2:#ffe066"><div class="th"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 9a4 4 0 010 6"/></svg><span class="badge" data-i18n="tag_voice">קולי</span><i class="ph"></i></div><div class="vmeta"><span class="av"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg></span><div><h3 data-i18n="n7h">שמע ותצוגה</h3><div class="ch">Voice Assistant<br><span data-i18n="meta_line">בשבע שפות</span></div></div></div><p data-i18n="n7p">עוצמה, השתקה, מהירות ניגון, כתוביות ומסך מלא.</p></article><article class="vc rv" style="--c1:#2b3245;--c2:#6a7494"><div class="th"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7.5v.4M12 11v5.5"/></svg><span class="badge" data-i18n="tag_voice">קולי</span><i class="ph"></i></div><div class="vmeta"><span class="av"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg></span><div><h3 data-i18n="n8h">אפשר לשאול אותו</h3><div class="ch">Voice Assistant<br><span data-i18n="meta_line">בשבע שפות</span></div></div></div><p data-i18n="n8p">כמה זמן נשאר, כמה אורך הסרטון, ובאיזה מקום אנחנו.</p></article></div>
+    </div>
+  </section>
+
+  <section class="s" id="langs">
+    <div class="wrap two">
+      <div>
+        <h2 class="rv" data-i18n="langs_h">אומרים את זה בשפה שלך</h2>
+        <p class="lead rv" data-i18n="langs_p">שבע שפות, ואפשר להחליף ביניהן גם בקול. עברית ואנגלית הכי מלאות. את השאר אנחנו ממשיכים לשפר.</p>
+        <div class="tabs rv" role="group" aria-label="Example language"><button type="button" class="chip tab on" data-ex="he" aria-pressed="true">עברית</button><button type="button" class="chip tab" data-ex="en" aria-pressed="false">English</button><button type="button" class="chip tab" data-ex="ro" aria-pressed="false">Română</button><button type="button" class="chip tab" data-ex="ru" aria-pressed="false">Русский</button><button type="button" class="chip tab" data-ex="ar" aria-pressed="false">العربية</button><button type="button" class="chip tab" data-ex="es" aria-pressed="false">Español</button><button type="button" class="chip tab" data-ex="fr" aria-pressed="false">Français</button></div>
+        <p class="wake rv"><span data-i18n="wake_label">אומרים קודם:</span><b id="wakeText" dir="auto">היי יוטיוב</b></p>
+      </div>
+      <div class="sg rv">
+        <div class="top"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M10.5 3a7.5 7.5 0 105.3 12.8l4.2 4.2 1.4-1.4-4.2-4.2A7.5 7.5 0 0010.5 3zm0 2a5.5 5.5 0 110 11 5.5 5.5 0 010-11z"/></svg><span id="sgTop" dir="auto">היי יוטיוב</span><span class="micb"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg></span></div>
+        <ul id="sugg" dir="rtl"><li style="--k:0"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg><span>עצור</span></li><li style="--k:1"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg><span>תריץ 30 שניות קדימה</span></li><li style="--k:2"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg><span>דלג על הפרסומת</span></li><li style="--k:3"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg><span>שיר הבא</span></li><li style="--k:4"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg><span>לסוף הסרטון</span></li><li style="--k:5"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg><span>מסך מלא</span></li></ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="s" id="know">
+    <div class="wrap">
+      <div class="desc rv">
+        <h2 data-i18n="know_h">ובשקיפות מלאה</h2>
+        <p style="margin:0;color:var(--muted)" data-i18n="know_p">כדי שאף אחד לא יופתע אחרי ההתקנה:</p>
+        <ul><li data-i18n="k1">זיהוי הדיבור עובד דרך Chrome והאינטרנט, ולכן צריך חיבור לרשת ומיקרופון.</li><li data-i18n="k2">התוסף מבין הרבה ניסוחים, אבל לא את כולם. אם משהו לא עבד, מנסחים אחרת.</li><li data-i18n="k3">רעש חזק ברקע מוריד את הדיוק. מיקרופון קרוב יותר עוזר.</li><li data-i18n="k4">חיפוש שיר מנגן את התוצאה הראשונה של יוטיוב, ולא תמיד זו הגרסה שחשבתם עליה.</li><li data-i18n="k5">דילוג על פרסומות עובד רק בפרסומות שיוטיוב מאפשרת לדלג עליהן.</li><li data-i18n="k6">עברית ואנגלית הכי מלאות. בשפות האחרות עוד יש מקום לשיפור.</li></ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="s" id="privacy">
+    <div class="wrap">
+      <div class="cm rv">
+        <span class="av">S</span>
+        <div>
+          <div class="hd"><b>Shirel</b><span class="cr" data-i18n="creator">יוצרת</span><span class="pn"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M15 3l6 6-2.4.8-3.1 3.1.4 4.6-1.6 1.6-3.2-4.2L6 19.5 4.5 18l4.5-4.1L4.8 10.7 6.4 9.1 11 9.5l3.1-3.1z"/></svg><span data-i18n="pinned">הוצמד על ידי שיראל</span></span></div>
+          <h3 data-i18n="priv_h">פרטיות, בקצרה</h3>
+          <p data-i18n="priv_p">התוסף לא מקליט, לא שומר ולא שולח את הקול שלך. את הדיבור מזהה Chrome, בשירות של גוגל. אלינו מגיעות רק ספירות אנונימיות, כמו איזה סוג פעולה בוצע ובאיזו שפה. אף פעם לא מה שנאמר, שמות שירים או קישורים.</p>
+          <a class="pb gray sm" href="privacy-policy.html"><span data-i18n="priv_link">מדיניות הפרטיות המלאה</span></a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="s" id="faq">
+    <div class="wrap" style="max-width:900px">
+      <h2 class="rv" data-i18n="faq_h">שאלות</h2>
+      <details class="rv"><summary><span data-i18n="q1">האם זה חוסם פרסומות?</span></summary><p data-i18n="a1">לא. בפרסומות שאפשר לדלג עליהן התוסף לוחץ על כפתור הדילוג או מעביר אותן לסיומן. פרסומות שיוטיוב לא מאפשרת לדלג עליהן ממשיכות כרגיל.</p></details><details class="rv"><summary><span data-i18n="q2">מה עושים כשהוא לא מבין?</span></summary><p data-i18n="a2">מנסחים מחדש. לפעמים הוא שואל ״האם התכוונת …?״ ואפשר לענות כן או לא. בחיפוש שיר אפשר להגיד ״לא זה״ כדי לקבל תוצאה אחרת.</p></details><details class="rv"><summary><span data-i18n="q3">על איזה מכשיר זה עובד?</span></summary><p data-i18n="a3">זה תוסף לדפדפן Chrome במחשב.</p></details><details class="rv"><summary><span data-i18n="q4">צריך להירשם?</span></summary><p data-i18n="a4">לא. מתקינים ומתחילים לדבר.</p></details><details class="rv"><summary><span data-i18n="q5">מי עומד מאחורי זה?</span></summary><p data-i18n="a5">פרויקט אישי של שיראל. שאלות ובעיות דרך GitHub.</p></details>
+    </div>
+  </section>
+
+  <section class="s">
+    <div class="wrap">
+      <div class="banner rv">
+        <svg class="staff" viewBox="0 0 2400 140" preserveAspectRatio="none" aria-hidden="true"><path d="M0,34.8 L20,36.5 L40,37.9 L60,39.0 L80,39.7 L100,40.0 L120,39.8 L140,39.2 L160,38.2 L180,36.9 L200,35.2 L220,33.3 L240,31.3 L260,29.2 L280,27.1 L300,25.2 L320,23.5 L340,22.1 L360,21.0 L380,20.3 L400,20.0 L420,20.2 L440,20.8 L460,21.8 L480,23.1 L500,24.8 L520,26.7 L540,28.7 L560,30.8 L580,32.9 L600,34.8 L620,36.5 L640,37.9 L660,39.0 L680,39.7 L700,40.0 L720,39.8 L740,39.2 L760,38.2 L780,36.9 L800,35.2 L820,33.3 L840,31.3 L860,29.2 L880,27.1 L900,25.2 L920,23.5 L940,22.1 L960,21.0 L980,20.3 L1000,20.0 L1020,20.2 L1040,20.8 L1060,21.8 L1080,23.1 L1100,24.8 L1120,26.7 L1140,28.7 L1160,30.8 L1180,32.9 L1200,34.8 L1220,36.5 L1240,37.9 L1260,39.0 L1280,39.7 L1300,40.0 L1320,39.8 L1340,39.2 L1360,38.2 L1380,36.9 L1400,35.2 L1420,33.3 L1440,31.3 L1460,29.2 L1480,27.1 L1500,25.2 L1520,23.5 L1540,22.1 L1560,21.0 L1580,20.3 L1600,20.0 L1620,20.2 L1640,20.8 L1660,21.8 L1680,23.1 L1700,24.8 L1720,26.7 L1740,28.7 L1760,30.8 L1780,32.9 L1800,34.8 L1820,36.5 L1840,37.9 L1860,39.0 L1880,39.7 L1900,40.0 L1920,39.8 L1940,39.2 L1960,38.2 L1980,36.9 L2000,35.2 L2020,33.3 L2040,31.3 L2060,29.2 L2080,27.1 L2100,25.2 L2120,23.5 L2140,22.1 L2160,21.0 L2180,20.3 L2200,20.0 L2220,20.2 L2240,20.8 L2260,21.8 L2280,23.1 L2300,24.8 L2320,26.7 L2340,28.7 L2360,30.8 L2380,32.9 L2400,34.8"/><path d="M0,43.6 L20,45.2 L40,46.5 L60,47.4 L80,47.9 L100,48.0 L120,47.6 L140,46.8 L160,45.6 L180,44.1 L200,42.3 L220,40.4 L240,38.3 L260,36.2 L280,34.2 L300,32.4 L320,30.8 L340,29.5 L360,28.6 L380,28.1 L400,28.0 L420,28.4 L440,29.2 L460,30.4 L480,31.9 L500,33.7 L520,35.6 L540,37.7 L560,39.8 L580,41.8 L600,43.6 L620,45.2 L640,46.5 L660,47.4 L680,47.9 L700,48.0 L720,47.6 L740,46.8 L760,45.6 L780,44.1 L800,42.3 L820,40.4 L840,38.3 L860,36.2 L880,34.2 L900,32.4 L920,30.8 L940,29.5 L960,28.6 L980,28.1 L1000,28.0 L1020,28.4 L1040,29.2 L1060,30.4 L1080,31.9 L1100,33.7 L1120,35.6 L1140,37.7 L1160,39.8 L1180,41.8 L1200,43.6 L1220,45.2 L1240,46.5 L1260,47.4 L1280,47.9 L1300,48.0 L1320,47.6 L1340,46.8 L1360,45.6 L1380,44.1 L1400,42.3 L1420,40.4 L1440,38.3 L1460,36.2 L1480,34.2 L1500,32.4 L1520,30.8 L1540,29.5 L1560,28.6 L1580,28.1 L1600,28.0 L1620,28.4 L1640,29.2 L1660,30.4 L1680,31.9 L1700,33.7 L1720,35.6 L1740,37.7 L1760,39.8 L1780,41.8 L1800,43.6 L1820,45.2 L1840,46.5 L1860,47.4 L1880,47.9 L1900,48.0 L1920,47.6 L1940,46.8 L1960,45.6 L1980,44.1 L2000,42.3 L2020,40.4 L2040,38.3 L2060,36.2 L2080,34.2 L2100,32.4 L2120,30.8 L2140,29.5 L2160,28.6 L2180,28.1 L2200,28.0 L2220,28.4 L2240,29.2 L2260,30.4 L2280,31.9 L2300,33.7 L2320,35.6 L2340,37.7 L2360,39.8 L2380,41.8 L2400,43.6"/><path d="M0,52.4 L20,53.9 L40,55.0 L60,55.7 L80,56.0 L100,55.8 L120,55.3 L140,54.3 L160,52.9 L180,51.3 L200,49.4 L220,47.4 L240,45.3 L260,43.2 L280,41.3 L300,39.6 L320,38.1 L340,37.0 L360,36.3 L380,36.0 L400,36.2 L420,36.7 L440,37.7 L460,39.1 L480,40.7 L500,42.6 L520,44.6 L540,46.7 L560,48.8 L580,50.7 L600,52.4 L620,53.9 L640,55.0 L660,55.7 L680,56.0 L700,55.8 L720,55.3 L740,54.3 L760,52.9 L780,51.3 L800,49.4 L820,47.4 L840,45.3 L860,43.2 L880,41.3 L900,39.6 L920,38.1 L940,37.0 L960,36.3 L980,36.0 L1000,36.2 L1020,36.7 L1040,37.7 L1060,39.1 L1080,40.7 L1100,42.6 L1120,44.6 L1140,46.7 L1160,48.8 L1180,50.7 L1200,52.4 L1220,53.9 L1240,55.0 L1260,55.7 L1280,56.0 L1300,55.8 L1320,55.3 L1340,54.3 L1360,52.9 L1380,51.3 L1400,49.4 L1420,47.4 L1440,45.3 L1460,43.2 L1480,41.3 L1500,39.6 L1520,38.1 L1540,37.0 L1560,36.3 L1580,36.0 L1600,36.2 L1620,36.7 L1640,37.7 L1660,39.1 L1680,40.7 L1700,42.6 L1720,44.6 L1740,46.7 L1760,48.8 L1780,50.7 L1800,52.4 L1820,53.9 L1840,55.0 L1860,55.7 L1880,56.0 L1900,55.8 L1920,55.3 L1940,54.3 L1960,52.9 L1980,51.3 L2000,49.4 L2020,47.4 L2040,45.3 L2060,43.2 L2080,41.3 L2100,39.6 L2120,38.1 L2140,37.0 L2160,36.3 L2180,36.0 L2200,36.2 L2220,36.7 L2240,37.7 L2260,39.1 L2280,40.7 L2300,42.6 L2320,44.6 L2340,46.7 L2360,48.8 L2380,50.7 L2400,52.4"/><path d="M0,61.2 L20,62.5 L40,63.4 L60,63.9 L80,64.0 L100,63.6 L120,62.8 L140,61.7 L160,60.2 L180,58.4 L200,56.4 L220,54.4 L240,52.3 L260,50.3 L280,48.4 L300,46.8 L320,45.5 L340,44.6 L360,44.1 L380,44.0 L400,44.4 L420,45.2 L440,46.3 L460,47.8 L480,49.6 L500,51.6 L520,53.6 L540,55.7 L560,57.7 L580,59.6 L600,61.2 L620,62.5 L640,63.4 L660,63.9 L680,64.0 L700,63.6 L720,62.8 L740,61.7 L760,60.2 L780,58.4 L800,56.4 L820,54.4 L840,52.3 L860,50.3 L880,48.4 L900,46.8 L920,45.5 L940,44.6 L960,44.1 L980,44.0 L1000,44.4 L1020,45.2 L1040,46.3 L1060,47.8 L1080,49.6 L1100,51.6 L1120,53.6 L1140,55.7 L1160,57.7 L1180,59.6 L1200,61.2 L1220,62.5 L1240,63.4 L1260,63.9 L1280,64.0 L1300,63.6 L1320,62.8 L1340,61.7 L1360,60.2 L1380,58.4 L1400,56.4 L1420,54.4 L1440,52.3 L1460,50.3 L1480,48.4 L1500,46.8 L1520,45.5 L1540,44.6 L1560,44.1 L1580,44.0 L1600,44.4 L1620,45.2 L1640,46.3 L1660,47.8 L1680,49.6 L1700,51.6 L1720,53.6 L1740,55.7 L1760,57.7 L1780,59.6 L1800,61.2 L1820,62.5 L1840,63.4 L1860,63.9 L1880,64.0 L1900,63.6 L1920,62.8 L1940,61.7 L1960,60.2 L1980,58.4 L2000,56.4 L2020,54.4 L2040,52.3 L2060,50.3 L2080,48.4 L2100,46.8 L2120,45.5 L2140,44.6 L2160,44.1 L2180,44.0 L2200,44.4 L2220,45.2 L2240,46.3 L2260,47.8 L2280,49.6 L2300,51.6 L2320,53.6 L2340,55.7 L2360,57.7 L2380,59.6 L2400,61.2"/><path d="M0,69.8 L20,71.0 L40,71.7 L60,72.0 L80,71.9 L100,71.3 L120,70.3 L140,69.0 L160,67.4 L180,65.5 L200,63.5 L220,61.4 L240,59.3 L260,57.4 L280,55.6 L300,54.2 L320,53.0 L340,52.3 L360,52.0 L380,52.1 L400,52.7 L420,53.7 L440,55.0 L460,56.6 L480,58.5 L500,60.5 L520,62.6 L540,64.7 L560,66.6 L580,68.4 L600,69.8 L620,71.0 L640,71.7 L660,72.0 L680,71.9 L700,71.3 L720,70.3 L740,69.0 L760,67.4 L780,65.5 L800,63.5 L820,61.4 L840,59.3 L860,57.4 L880,55.6 L900,54.2 L920,53.0 L940,52.3 L960,52.0 L980,52.1 L1000,52.7 L1020,53.7 L1040,55.0 L1060,56.6 L1080,58.5 L1100,60.5 L1120,62.6 L1140,64.7 L1160,66.6 L1180,68.4 L1200,69.8 L1220,71.0 L1240,71.7 L1260,72.0 L1280,71.9 L1300,71.3 L1320,70.3 L1340,69.0 L1360,67.4 L1380,65.5 L1400,63.5 L1420,61.4 L1440,59.3 L1460,57.4 L1480,55.6 L1500,54.2 L1520,53.0 L1540,52.3 L1560,52.0 L1580,52.1 L1600,52.7 L1620,53.7 L1640,55.0 L1660,56.6 L1680,58.5 L1700,60.5 L1720,62.6 L1740,64.7 L1760,66.6 L1780,68.4 L1800,69.8 L1820,71.0 L1840,71.7 L1860,72.0 L1880,71.9 L1900,71.3 L1920,70.3 L1940,69.0 L1960,67.4 L1980,65.5 L2000,63.5 L2020,61.4 L2040,59.3 L2060,57.4 L2080,55.6 L2100,54.2 L2120,53.0 L2140,52.3 L2160,52.0 L2180,52.1 L2200,52.7 L2220,53.7 L2240,55.0 L2260,56.6 L2280,58.5 L2300,60.5 L2320,62.6 L2340,64.7 L2360,66.6 L2380,68.4 L2400,69.8"/></svg><svg class="staff st-b" viewBox="0 0 2400 140" preserveAspectRatio="none" aria-hidden="true"><path d="M0,40.9 L20,40.0 L40,38.8 L60,37.5 L80,35.9 L100,34.2 L120,32.4 L140,30.5 L160,28.6 L180,26.8 L200,25.0 L220,23.4 L240,21.9 L260,20.6 L280,19.5 L300,18.8 L320,18.2 L340,18.0 L360,18.1 L380,18.4 L400,19.1 L420,20.0 L440,21.2 L460,22.5 L480,24.1 L500,25.8 L520,27.6 L540,29.5 L560,31.4 L580,33.2 L600,35.0 L620,36.6 L640,38.1 L660,39.4 L680,40.5 L700,41.2 L720,41.8 L740,42.0 L760,41.9 L780,41.6 L800,40.9 L820,40.0 L840,38.8 L860,37.5 L880,35.9 L900,34.2 L920,32.4 L940,30.5 L960,28.6 L980,26.8 L1000,25.0 L1020,23.4 L1040,21.9 L1060,20.6 L1080,19.5 L1100,18.8 L1120,18.2 L1140,18.0 L1160,18.1 L1180,18.4 L1200,19.1 L1220,20.0 L1240,21.2 L1260,22.5 L1280,24.1 L1300,25.8 L1320,27.6 L1340,29.5 L1360,31.4 L1380,33.2 L1400,35.0 L1420,36.6 L1440,38.1 L1460,39.4 L1480,40.5 L1500,41.2 L1520,41.8 L1540,42.0 L1560,41.9 L1580,41.6 L1600,40.9 L1620,40.0 L1640,38.8 L1660,37.5 L1680,35.9 L1700,34.2 L1720,32.4 L1740,30.5 L1760,28.6 L1780,26.8 L1800,25.0 L1820,23.4 L1840,21.9 L1860,20.6 L1880,19.5 L1900,18.8 L1920,18.2 L1940,18.0 L1960,18.1 L1980,18.4 L2000,19.1 L2020,20.0 L2040,21.2 L2060,22.5 L2080,24.1 L2100,25.8 L2120,27.6 L2140,29.5 L2160,31.4 L2180,33.2 L2200,35.0 L2220,36.6 L2240,38.1 L2260,39.4 L2280,40.5 L2300,41.2 L2320,41.8 L2340,42.0 L2360,41.9 L2380,41.6 L2400,40.9"/><path d="M0,48.4 L20,47.3 L40,46.0 L60,44.5 L80,42.8 L100,41.0 L120,39.2 L140,37.3 L160,35.4 L180,33.6 L200,31.9 L220,30.4 L240,29.0 L260,27.9 L280,27.0 L300,26.4 L320,26.1 L340,26.0 L360,26.3 L380,26.8 L400,27.6 L420,28.7 L440,30.0 L460,31.5 L480,33.2 L500,35.0 L520,36.8 L540,38.7 L560,40.6 L580,42.4 L600,44.1 L620,45.6 L640,47.0 L660,48.1 L680,49.0 L700,49.6 L720,49.9 L740,50.0 L760,49.7 L780,49.2 L800,48.4 L820,47.3 L840,46.0 L860,44.5 L880,42.8 L900,41.0 L920,39.2 L940,37.3 L960,35.4 L980,33.6 L1000,31.9 L1020,30.4 L1040,29.0 L1060,27.9 L1080,27.0 L1100,26.4 L1120,26.1 L1140,26.0 L1160,26.3 L1180,26.8 L1200,27.6 L1220,28.7 L1240,30.0 L1260,31.5 L1280,33.2 L1300,35.0 L1320,36.8 L1340,38.7 L1360,40.6 L1380,42.4 L1400,44.1 L1420,45.6 L1440,47.0 L1460,48.1 L1480,49.0 L1500,49.6 L1520,49.9 L1540,50.0 L1560,49.7 L1580,49.2 L1600,48.4 L1620,47.3 L1640,46.0 L1660,44.5 L1680,42.8 L1700,41.0 L1720,39.2 L1740,37.3 L1760,35.4 L1780,33.6 L1800,31.9 L1820,30.4 L1840,29.0 L1860,27.9 L1880,27.0 L1900,26.4 L1920,26.1 L1940,26.0 L1960,26.3 L1980,26.8 L2000,27.6 L2020,28.7 L2040,30.0 L2060,31.5 L2080,33.2 L2100,35.0 L2120,36.8 L2140,38.7 L2160,40.6 L2180,42.4 L2200,44.1 L2220,45.6 L2240,47.0 L2260,48.1 L2280,49.0 L2300,49.6 L2320,49.9 L2340,50.0 L2360,49.7 L2380,49.2 L2400,48.4"/><path d="M0,55.7 L20,54.5 L40,53.0 L60,51.4 L80,49.7 L100,47.9 L120,46.0 L140,44.1 L160,42.3 L180,40.5 L200,38.9 L220,37.5 L240,36.3 L260,35.3 L280,34.6 L300,34.1 L320,34.0 L340,34.1 L360,34.6 L380,35.3 L400,36.3 L420,37.5 L440,39.0 L460,40.6 L480,42.3 L500,44.1 L520,46.0 L540,47.9 L560,49.7 L580,51.5 L600,53.1 L620,54.5 L640,55.7 L660,56.7 L680,57.4 L700,57.9 L720,58.0 L740,57.9 L760,57.4 L780,56.7 L800,55.7 L820,54.5 L840,53.0 L860,51.4 L880,49.7 L900,47.9 L920,46.0 L940,44.1 L960,42.3 L980,40.5 L1000,38.9 L1020,37.5 L1040,36.3 L1060,35.3 L1080,34.6 L1100,34.1 L1120,34.0 L1140,34.1 L1160,34.6 L1180,35.3 L1200,36.3 L1220,37.5 L1240,39.0 L1260,40.6 L1280,42.3 L1300,44.1 L1320,46.0 L1340,47.9 L1360,49.7 L1380,51.5 L1400,53.1 L1420,54.5 L1440,55.7 L1460,56.7 L1480,57.4 L1500,57.9 L1520,58.0 L1540,57.9 L1560,57.4 L1580,56.7 L1600,55.7 L1620,54.5 L1640,53.0 L1660,51.4 L1680,49.7 L1700,47.9 L1720,46.0 L1740,44.1 L1760,42.3 L1780,40.5 L1800,38.9 L1820,37.5 L1840,36.3 L1860,35.3 L1880,34.6 L1900,34.1 L1920,34.0 L1940,34.1 L1960,34.6 L1980,35.3 L2000,36.3 L2020,37.5 L2040,39.0 L2060,40.6 L2080,42.3 L2100,44.1 L2120,46.0 L2140,47.9 L2160,49.7 L2180,51.5 L2200,53.1 L2220,54.5 L2240,55.7 L2260,56.7 L2280,57.4 L2300,57.9 L2320,58.0 L2340,57.9 L2360,57.4 L2380,56.7 L2400,55.7"/><path d="M0,62.9 L20,61.6 L40,60.0 L60,58.3 L80,56.5 L100,54.7 L120,52.8 L140,50.9 L160,49.2 L180,47.5 L200,46.0 L220,44.7 L240,43.6 L260,42.8 L280,42.3 L300,42.0 L320,42.1 L340,42.4 L360,43.0 L380,43.9 L400,45.1 L420,46.4 L440,48.0 L460,49.7 L480,51.5 L500,53.3 L520,55.2 L540,57.1 L560,58.8 L580,60.5 L600,62.0 L620,63.3 L640,64.4 L660,65.2 L680,65.7 L700,66.0 L720,65.9 L740,65.6 L760,65.0 L780,64.1 L800,62.9 L820,61.6 L840,60.0 L860,58.3 L880,56.5 L900,54.7 L920,52.8 L940,50.9 L960,49.2 L980,47.5 L1000,46.0 L1020,44.7 L1040,43.6 L1060,42.8 L1080,42.3 L1100,42.0 L1120,42.1 L1140,42.4 L1160,43.0 L1180,43.9 L1200,45.1 L1220,46.4 L1240,48.0 L1260,49.7 L1280,51.5 L1300,53.3 L1320,55.2 L1340,57.1 L1360,58.8 L1380,60.5 L1400,62.0 L1420,63.3 L1440,64.4 L1460,65.2 L1480,65.7 L1500,66.0 L1520,65.9 L1540,65.6 L1560,65.0 L1580,64.1 L1600,62.9 L1620,61.6 L1640,60.0 L1660,58.3 L1680,56.5 L1700,54.7 L1720,52.8 L1740,50.9 L1760,49.2 L1780,47.5 L1800,46.0 L1820,44.7 L1840,43.6 L1860,42.8 L1880,42.3 L1900,42.0 L1920,42.1 L1940,42.4 L1960,43.0 L1980,43.9 L2000,45.1 L2020,46.4 L2040,48.0 L2060,49.7 L2080,51.5 L2100,53.3 L2120,55.2 L2140,57.1 L2160,58.8 L2180,60.5 L2200,62.0 L2220,63.3 L2240,64.4 L2260,65.2 L2280,65.7 L2300,66.0 L2320,65.9 L2340,65.6 L2360,65.0 L2380,64.1 L2400,62.9"/><path d="M0,70.1 L20,68.6 L40,67.0 L60,65.2 L80,63.4 L100,61.5 L120,59.6 L140,57.8 L160,56.1 L180,54.5 L200,53.2 L220,52.0 L240,51.1 L260,50.4 L280,50.1 L300,50.0 L320,50.2 L340,50.8 L360,51.6 L380,52.6 L400,53.9 L420,55.4 L440,57.0 L460,58.8 L480,60.6 L500,62.5 L520,64.4 L540,66.2 L560,67.9 L580,69.5 L600,70.8 L620,72.0 L640,72.9 L660,73.6 L680,73.9 L700,74.0 L720,73.8 L740,73.2 L760,72.4 L780,71.4 L800,70.1 L820,68.6 L840,67.0 L860,65.2 L880,63.4 L900,61.5 L920,59.6 L940,57.8 L960,56.1 L980,54.5 L1000,53.2 L1020,52.0 L1040,51.1 L1060,50.4 L1080,50.1 L1100,50.0 L1120,50.2 L1140,50.8 L1160,51.6 L1180,52.6 L1200,53.9 L1220,55.4 L1240,57.0 L1260,58.8 L1280,60.6 L1300,62.5 L1320,64.4 L1340,66.2 L1360,67.9 L1380,69.5 L1400,70.8 L1420,72.0 L1440,72.9 L1460,73.6 L1480,73.9 L1500,74.0 L1520,73.8 L1540,73.2 L1560,72.4 L1580,71.4 L1600,70.1 L1620,68.6 L1640,67.0 L1660,65.2 L1680,63.4 L1700,61.5 L1720,59.6 L1740,57.8 L1760,56.1 L1780,54.5 L1800,53.2 L1820,52.0 L1840,51.1 L1860,50.4 L1880,50.1 L1900,50.0 L1920,50.2 L1940,50.8 L1960,51.6 L1980,52.6 L2000,53.9 L2020,55.4 L2040,57.0 L2060,58.8 L2080,60.6 L2100,62.5 L2120,64.4 L2140,66.2 L2160,67.9 L2180,69.5 L2200,70.8 L2220,72.0 L2240,72.9 L2260,73.6 L2280,73.9 L2300,74.0 L2320,73.8 L2340,73.2 L2360,72.4 L2380,71.4 L2400,70.1"/></svg>
+        <svg class="bm" style="left:8%;top:22%" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><ellipse cx="8" cy="18" rx="4.4" ry="3.3" transform="rotate(-22 8 18)"/><rect x="11.4" y="3" width="2" height="15"/></svg>
+        <svg class="bm" style="right:9%;bottom:20%;animation-delay:-2s" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><ellipse cx="6" cy="18" rx="3.6" ry="2.8" transform="rotate(-22 6 18)"/><ellipse cx="17" cy="16" rx="3.6" ry="2.8" transform="rotate(-22 17 16)"/><rect x="8.6" y="5" width="1.8" height="13"/><rect x="19.6" y="3" width="1.8" height="13"/><path d="M8.6 5L21.4 3v3.4L8.6 8.4z"/></svg>
+        <h2 data-i18n="final_h">מוכנים לשחרר את הידיים?</h2>
+        <p data-i18n="final_p">התקנה בלחיצה אחת, בלי הרשמה.</p>
+        <a class="pb" href="https://chromewebstore.google.com/detail/youtube-voice-assistant/edhhpgeefjdbbimmpbpapdaoeofklcok"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" ><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z"/></svg><span data-i18n="cta">הוסף לכרום</span></a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div class="row">
+      <a href="privacy-policy.html" data-i18n="foot_privacy">מדיניות פרטיות</a>
+      <a href="https://github.com/shirelzag24/youtubevoice-assistant/issues" data-i18n="foot_issues">דיווח על בעיה</a>
+      <a href="https://chromewebstore.google.com/detail/youtube-voice-assistant/edhhpgeefjdbbimmpbpapdaoeofklcok" data-i18n="foot_store">חנות Chrome</a>
+    </div>
+    <p style="margin:0 0 6px">© 2026 Shirel. YouTube Voice Assistant</p>
+    <p style="margin:0" data-i18n="disclaimer">התוסף אינו קשור ליוטיוב או לגוגל ואינו מאושר על ידם. YouTube הוא סימן מסחרי של Google LLC.</p>
+  </div>
+</footer>
+
+<script>
+document.documentElement.classList.add('js');
+const I18N = {"he": {"title": "YouTube Voice Assistant: שליטה קולית ביוטיוב", "desc": "תוסף לדפדפן Chrome ששולט ביוטיוב בקול: עצירה, מעבר בזמן, מעבר בין שירים, דילוג על פרסומות, חיפוש שיר לפי שם ועוד. בשבע שפות.", "nav_how": "איך זה עובד", "nav_can": "מה הוא יודע", "nav_langs": "שפות", "nav_know": "כדאי לדעת", "nav_faq": "שאלות", "cta": "הוסף לכרום", "cta2": "איך זה עובד", "badge": "תוסף לדפדפן Chrome", "h1a": "יוטיוב", "h1b": "בלי ידיים.", "sub": "ידיים מלאות בצק, מברג ביד, או סתם רחוק על הספה? אומרים מה רוצים, והסרטון עושה.", "sticker_n": "7", "sticker_t": "שפות", "demo_cap": "ככה זה נראה אצלך על המסך", "how_h": "שלושה צעדים וזה עובד", "s1h": "מתקינים", "s1p": "מחנות התוספים של Chrome, בלחיצה אחת.", "s2h": "נכנסים ליוטיוב", "s2p": "לוחצים פעם אחת בכל מקום בדף, ומאשרים לדפדפן להשתמש במיקרופון.", "s3h": "אומרים ״היי יוטיוב״", "s3p": "ואחריה את מה שרוצים. אפשר גם ללחוץ על כפתור המיקרופון בנגן.", "can_h": "מה הוא יודע לעשות", "can_p": "הנה העיקרים. אין צורך לזכור ניסוחים מדויקים. אומרים את זה בדרך שלך, והתוסף מבין הרבה וריאציות.", "n1h": "עצירה והמשך", "n1p": "עוצרים את הסרטון, ומחזירים אותו לנגן מאותה נקודה.", "n2h": "קדימה ואחורה בזמן", "n2p": "רצים כמה שניות קדימה או אחורה, או קופצים ישר לדקה מסוימת.", "n3h": "להתחלה או לסוף", "n3p": "חוזרים לתחילת הסרטון, או קופצים לסופו.", "n4h": "מעבר בין שירים", "n4p": "לשיר או לסרטון הבא והקודם, ואפשר גם לדלג על כמה בבת אחת.", "n5h": "חיפוש לפי שם", "n5p": "אומרים שם של שיר או של זמר, והתוסף מחפש ומנגן את התוצאה הראשונה. אם זה לא זה, מבקשים תוצאה אחרת.", "n6h": "פרסומות", "n6p": "בפרסומות שיוטיוב מאפשרת לדלג עליהן, התוסף לוחץ על כפתור הדילוג או מעביר את הפרסומת ישר לסיומה. פרסומות שאי אפשר לדלג עליהן ממשיכות כרגיל.", "n7h": "שמע ותצוגה", "n7p": "עוצמה, השתקה, מהירות ניגון, כתוביות ומסך מלא.", "n8h": "אפשר לשאול אותו", "n8p": "כמה זמן נשאר, כמה אורך הסרטון, ובאיזה מקום אנחנו.", "langs_h": "אומרים את זה בשפה שלך", "langs_p": "שבע שפות, ואפשר להחליף ביניהן גם בקול. עברית ואנגלית הכי מלאות. את השאר אנחנו ממשיכים לשפר.", "wake_label": "אומרים קודם:", "know_h": "ובשקיפות מלאה", "know_p": "כדי שאף אחד לא יופתע אחרי ההתקנה:", "k1": "זיהוי הדיבור עובד דרך Chrome והאינטרנט, ולכן צריך חיבור לרשת ומיקרופון.", "k2": "התוסף מבין הרבה ניסוחים, אבל לא את כולם. אם משהו לא עבד, מנסחים אחרת.", "k3": "רעש חזק ברקע מוריד את הדיוק. מיקרופון קרוב יותר עוזר.", "k4": "חיפוש שיר מנגן את התוצאה הראשונה של יוטיוב, ולא תמיד זו הגרסה שחשבתם עליה.", "k5": "דילוג על פרסומות עובד רק בפרסומות שיוטיוב מאפשרת לדלג עליהן.", "k6": "עברית ואנגלית הכי מלאות. בשפות האחרות עוד יש מקום לשיפור.", "priv_h": "פרטיות, בקצרה", "priv_p": "התוסף לא מקליט, לא שומר ולא שולח את הקול שלך. את הדיבור מזהה Chrome, בשירות של גוגל. אלינו מגיעות רק ספירות אנונימיות, כמו איזה סוג פעולה בוצע ובאיזו שפה. אף פעם לא מה שנאמר, שמות שירים או קישורים.", "priv_link": "מדיניות הפרטיות המלאה", "faq_h": "שאלות", "q1": "האם זה חוסם פרסומות?", "a1": "לא. בפרסומות שאפשר לדלג עליהן התוסף לוחץ על כפתור הדילוג או מעביר אותן לסיומן. פרסומות שיוטיוב לא מאפשרת לדלג עליהן ממשיכות כרגיל.", "q2": "מה עושים כשהוא לא מבין?", "a2": "מנסחים מחדש. לפעמים הוא שואל ״האם התכוונת …?״ ואפשר לענות כן או לא. בחיפוש שיר אפשר להגיד ״לא זה״ כדי לקבל תוצאה אחרת.", "q3": "על איזה מכשיר זה עובד?", "a3": "זה תוסף לדפדפן Chrome במחשב.", "q4": "צריך להירשם?", "a4": "לא. מתקינים ומתחילים לדבר.", "q5": "מי עומד מאחורי זה?", "a5": "פרויקט אישי של שיראל. שאלות ובעיות דרך GitHub.", "final_h": "מוכנים לשחרר את הידיים?", "final_p": "התקנה בלחיצה אחת, בלי הרשמה.", "foot_privacy": "מדיניות פרטיות", "foot_issues": "דיווח על בעיה", "foot_store": "חנות Chrome", "disclaimer": "התוסף אינו קשור ליוטיוב או לגוגל ואינו מאושר על ידם. YouTube הוא סימן מסחרי של Google LLC.", "nav_all": "הכול", "nav_privacy": "פרטיות", "tag_voice": "קולי", "meta_line": "בשבע שפות", "pinned": "הוצמד על ידי שיראל", "theme_btn": "החלפה בין מצב בהיר לכהה", "motion_btn": "הפעלה או כיבוי של תנועה", "upnext": "הבא בתור", "creator": "יוצרת", "how_p": "בלי הגדרות מסובכות ובלי הרשמה. שלושה צעדים והוא מקשיב."}, "en": {"title": "YouTube Voice Assistant: voice control for YouTube", "desc": "A Chrome extension that controls YouTube with your voice: pause, jump in time, switch songs, skip ads, search a song by name and more. In seven languages.", "nav_how": "How it works", "nav_can": "What it does", "nav_langs": "Languages", "nav_know": "Good to know", "nav_faq": "FAQ", "cta": "Add to Chrome", "cta2": "How it works", "badge": "Chrome extension", "h1a": "YouTube", "h1b": "without hands.", "sub": "Hands covered in dough, a screwdriver in your grip, or just across the room on the couch? Say what you want and the video does it.", "sticker_n": "7", "sticker_t": "languages", "demo_cap": "This is what you see on screen", "how_h": "Three steps and you’re set", "s1h": "Install", "s1p": "From the Chrome Web Store, one click.", "s2h": "Open YouTube", "s2p": "Click once anywhere on the page and allow the browser to use your microphone.", "s3h": "Say “Hey YouTube”", "s3p": "then say what you want. You can also click the microphone button on the player.", "can_h": "What it does", "can_p": "The main things are below. You don’t need to remember exact phrases. Say it your own way and it understands many variations.", "n1h": "Pause and resume", "n1p": "Stop the video, then set it playing again from the same spot.", "n2h": "Forward and back in time", "n2p": "Run a few seconds ahead or back, or jump straight to a specific minute.", "n3h": "To the start or the end", "n3p": "Go back to the beginning of the video, or jump to its end.", "n4h": "Switching songs", "n4p": "Next or previous song or video, or skip several in one go.", "n5h": "Search by name", "n5p": "Say a song or an artist and the extension searches and plays the first result. If it’s not the one, ask for another.", "n6h": "Ads", "n6p": "On ads YouTube lets you skip, it clicks the Skip button or jumps the ad to its end. Ads you can’t skip keep playing as usual.", "n7h": "Sound and display", "n7p": "Volume, mute, playback speed, subtitles and full screen.", "n8h": "Ask it", "n8p": "How much time is left, how long the video is, and where you are.", "langs_h": "Say it in your language", "langs_p": "Seven languages, and you can switch between them by voice. Hebrew and English are the most complete. We keep improving the rest.", "wake_label": "Say first:", "know_h": "And in full honesty", "know_p": "So nobody is surprised after installing:", "k1": "Speech recognition runs through Chrome and the internet, so you need a connection and a microphone.", "k2": "It understands many phrasings, but not all of them. If something didn’t work, say it differently.", "k3": "Loud background noise lowers accuracy. A closer microphone helps.", "k4": "Searching for a song plays YouTube’s first result, which isn’t always the version you had in mind.", "k5": "Skipping ads only works on ads that YouTube lets you skip.", "k6": "Hebrew and English are the most complete. The other languages still have room to grow.", "priv_h": "Privacy in short", "priv_p": "The extension doesn’t record, store or send your voice. Chrome recognizes the speech, using Google’s service. We only receive anonymous counts, such as which kind of action ran and in which language. Never what you said, song names or links.", "priv_link": "Read the full privacy policy", "faq_h": "Questions", "q1": "Does it block ads?", "a1": "No. On ads you can skip, it clicks the Skip button or jumps the ad to its end. Ads YouTube doesn’t let you skip keep playing as usual.", "q2": "What if it doesn’t understand?", "a2": "Say it differently. Sometimes it asks “Did you mean …?” and you answer yes or no. When searching for a song you can say “not this one” to get another result.", "q3": "Which devices does it work on?", "a3": "It’s an extension for the Chrome browser on a computer.", "q4": "Do I need to sign up?", "a4": "No. Install it and start talking.", "q5": "Who is behind this?", "a5": "A personal project by Shirel. Questions and issues go through GitHub.", "final_h": "Ready to free your hands?", "final_p": "One click to install, no sign up.", "foot_privacy": "Privacy policy", "foot_issues": "Report an issue", "foot_store": "Chrome Web Store", "disclaimer": "This extension is not affiliated with or endorsed by YouTube or Google. YouTube is a trademark of Google LLC.", "nav_all": "All", "nav_privacy": "Privacy", "tag_voice": "Voice", "meta_line": "In seven languages", "pinned": "Pinned by Shirel", "theme_btn": "Switch between light and dark", "motion_btn": "Turn motion on or off", "upnext": "Up next", "creator": "Creator", "how_p": "No complicated setup and no sign up. Three steps and it listens."}, "ro": {"title": "YouTube Voice Assistant: control vocal pentru YouTube", "desc": "O extensie Chrome care controlează YouTube cu vocea: pauză, salt în timp, schimbarea melodiilor, sărit peste reclame, căutare după nume și multe altele. În șapte limbi.", "nav_how": "Cum funcționează", "nav_can": "Ce face", "nav_langs": "Limbi", "nav_know": "Bine de știut", "nav_faq": "Întrebări", "cta": "Adaugă în Chrome", "cta2": "Cum funcționează", "badge": "Extensie Chrome", "h1a": "YouTube", "h1b": "fără mâini.", "sub": "Mâini pline de aluat, o șurubelniță în mână sau doar de pe canapea, de departe? Spui ce vrei, iar videoclipul face.", "sticker_n": "7", "sticker_t": "limbi", "demo_cap": "Așa arată pe ecranul tău", "how_h": "Trei pași și gata", "s1h": "Instalează", "s1p": "Din Chrome Web Store, cu un clic.", "s2h": "Deschide YouTube", "s2p": "Apasă o dată oriunde pe pagină și permite browserului să folosească microfonul.", "s3h": "Spune „Hei YouTube”", "s3p": "apoi spune ce vrei. Poți apăsa și butonul de microfon din player.", "can_h": "Ce face", "can_p": "Iată principalele lucruri. Nu trebuie să ții minte fraze exacte. Spune în felul tău, extensia înțelege multe variante.", "n1h": "Pauză și continuare", "n1p": "Oprești videoclipul și îl pornești din același loc.", "n2h": "Înainte și înapoi în timp", "n2p": "Sari câteva secunde înainte sau înapoi, sau mergi direct la un anumit minut.", "n3h": "La început sau la sfârșit", "n3p": "Te întorci la începutul videoclipului sau sari la final.", "n4h": "Schimbarea melodiilor", "n4p": "La melodia sau videoclipul următor ori anterior, sau sari peste mai multe deodată.", "n5h": "Căutare după nume", "n5p": "Spui numele unei melodii sau al unui artist, iar extensia caută și redă primul rezultat. Dacă nu e cel potrivit, ceri altul.", "n6h": "Reclame", "n6p": "La reclamele pe care YouTube le lasă să fie omise, apasă butonul Omite sau duce reclama direct la final. Reclamele care nu pot fi omise rulează ca de obicei.", "n7h": "Sunet și afișare", "n7p": "Volum, mut, viteza de redare, subtitrări și ecran complet.", "n8h": "Întreabă-l", "n8p": "Cât timp a mai rămas, cât durează videoclipul și unde ne aflăm.", "langs_h": "Spune în limba ta", "langs_p": "Șapte limbi, între care poți trece și cu vocea. Ebraica și engleza sunt cele mai complete. Pe celelalte le îmbunătățim în continuare.", "wake_label": "Spune mai întâi:", "know_h": "Și, cu toată sinceritatea", "know_p": "Ca să nu fie nimeni surprins după instalare:", "k1": "Recunoașterea vocală funcționează prin Chrome și internet, deci ai nevoie de conexiune și de microfon.", "k2": "Înțelege multe formulări, dar nu pe toate. Dacă ceva nu a mers, spune altfel.", "k3": "Zgomotul puternic din fundal scade precizia. Un microfon mai aproape ajută.", "k4": "Căutarea unei melodii redă primul rezultat de pe YouTube, care nu e mereu versiunea la care te gândeai.", "k5": "Sărirea peste reclame funcționează doar la reclamele pe care YouTube le lasă să fie omise.", "k6": "Ebraica și engleza sunt cele mai complete. La celelalte limbi mai avem de lucru.", "priv_h": "Confidențialitatea, pe scurt", "priv_p": "Extensia nu îți înregistrează, nu salvează și nu trimite vocea. Chrome recunoaște vorbirea, prin serviciul Google. Noi primim doar contoare anonime, de exemplu ce tip de acțiune s-a executat și în ce limbă. Niciodată ce ai spus, numele melodiilor sau linkuri.", "priv_link": "Politica completă de confidențialitate", "faq_h": "Întrebări", "q1": "Blochează reclamele?", "a1": "Nu. La reclamele care pot fi omise apasă butonul Omite sau duce reclama la final. Reclamele pe care YouTube nu le lasă să fie omise rulează ca de obicei.", "q2": "Ce fac dacă nu înțelege?", "a2": "Spune altfel. Uneori întreabă „Ai vrut să spui …?”, iar tu răspunzi da sau nu. La căutarea unei melodii poți spune „nu asta” ca să primești alt rezultat.", "q3": "Pe ce dispozitive funcționează?", "a3": "Este o extensie pentru browserul Chrome de pe computer.", "q4": "Trebuie să mă înregistrez?", "a4": "Nu. O instalezi și începi să vorbești.", "q5": "Cine e în spatele ei?", "a5": "Un proiect personal al lui Shirel. Întrebările și problemele trec prin GitHub.", "final_h": "Gata să-ți eliberezi mâinile?", "final_p": "Instalare cu un clic, fără înregistrare.", "foot_privacy": "Politica de confidențialitate", "foot_issues": "Raportează o problemă", "foot_store": "Chrome Web Store", "disclaimer": "Această extensie nu este afiliată cu YouTube sau Google și nu este aprobată de acestea. YouTube este o marcă comercială a Google LLC.", "nav_all": "Toate", "nav_privacy": "Confidențialitate", "tag_voice": "Voce", "meta_line": "În șapte limbi", "pinned": "Fixat de Shirel", "theme_btn": "Comută între luminos și întunecat", "motion_btn": "Pornește sau oprește mișcarea", "upnext": "Urmează", "creator": "Creator", "how_p": "Fără setări complicate și fără înregistrare. Trei pași și te ascultă."}};
+const EX = {"he": ["עצור", "תריץ 30 שניות קדימה", "דלג על הפרסומת", "שיר הבא", "לסוף הסרטון", "מסך מלא"], "en": ["pause", "skip forward 30 seconds", "skip the ad", "next song", "go to the end", "full screen"], "ro": ["pauză", "sari 30 de secunde înainte", "sari peste reclamă", "melodia următoare", "la sfârșitul videoclipului", "ecran complet"], "ru": ["пауза", "перемотай вперёд на 30 секунд", "пропусти рекламу", "следующая песня", "в конец видео", "полный экран"], "ar": ["توقف", "تقدم 30 ثانية", "تخطي الإعلان", "الأغنية التالية", "إلى نهاية الفيديو", "ملء الشاشة"], "es": ["pausa", "avanza 30 segundos", "salta el anuncio", "siguiente canción", "ir al final del video", "pantalla completa"], "fr": ["pause", "avance de 30 secondes", "passe la publicité", "chanson suivante", "aller à la fin de la vidéo", "plein écran"]};
+const WAKE = {"he": "היי יוטיוב", "en": "Hey YouTube", "ro": "Hei YouTube", "ru": "Привет ютуб", "ar": "هاي يوتيوب", "es": "Hola YouTube", "fr": "Salut YouTube"};
+const RTL = ["he", "ar"];
+const NOTES = ["<ellipse cx=\"8\" cy=\"18\" rx=\"4.4\" ry=\"3.3\" transform=\"rotate(-22 8 18)\"/><rect x=\"11.4\" y=\"3\" width=\"2\" height=\"15\"/>", "<ellipse cx=\"8\" cy=\"18\" rx=\"4.4\" ry=\"3.3\" transform=\"rotate(-22 8 18)\"/><rect x=\"11.4\" y=\"3\" width=\"2\" height=\"15\"/><path d=\"M13.4 3c0 4.5 6.6 4.6 6.6 10.2-1.6-3-4.4-3.8-6.6-3.8z\"/>", "<ellipse cx=\"6\" cy=\"18\" rx=\"3.6\" ry=\"2.8\" transform=\"rotate(-22 6 18)\"/><ellipse cx=\"17\" cy=\"16\" rx=\"3.6\" ry=\"2.8\" transform=\"rotate(-22 17 16)\"/><rect x=\"8.6\" y=\"5\" width=\"1.8\" height=\"13\"/><rect x=\"19.6\" y=\"3\" width=\"1.8\" height=\"13\"/><path d=\"M8.6 5L21.4 3v3.4L8.6 8.4z\"/>"];
+const root = document.documentElement;
+const REDUCED = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+const store = { get(k) { try { return localStorage.getItem(k); } catch (_) { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch (_) {} } };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const motionOn = () => root.dataset.motion !== 'off';
+
+/* שפת העמוד */
+function setLang(lg) {
+  if (!I18N[lg]) lg = 'he';
+  const d = I18N[lg];
+  root.lang = lg; root.dir = lg === 'he' ? 'rtl' : 'ltr';
+  document.querySelectorAll('[data-i18n]').forEach((el) => { const v = d[el.dataset.i18n]; if (v != null) el.textContent = v; });
+  document.querySelectorAll('[data-i18n-aria]').forEach((el) => { const v = d[el.dataset.i18nAria]; if (v != null) el.setAttribute('aria-label', v); });
+  document.title = d.title;
+  const m = document.querySelector('meta[name="description"]'); if (m) m.content = d.desc;
+  document.querySelectorAll('.lang button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === lg)));
+  store.set('yva-lang', lg);
+}
+document.querySelectorAll('.lang button').forEach((b) => b.addEventListener('click', () => setLang(b.dataset.lang)));
+(function () {
+  let lg = store.get('yva-lang');
+  if (!lg) {
+    const L = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'he']).map((x) => x.slice(0, 2).toLowerCase());
+    lg = (L.includes('he') || L.includes('iw')) ? 'he' : (L[0] === 'ro' ? 'ro' : 'en');
+  }
+  if (lg !== 'he') setLang(lg);
+})();
+
+/* מצב בהיר/כהה ותנועה */
+const themeMeta = document.querySelector('meta[name="theme-color"]');
+function setTheme(t) { t = t === 'dark' ? 'dark' : 'light'; root.dataset.theme = t; if (themeMeta) themeMeta.content = t === 'dark' ? '#0f0f0f' : '#ffffff'; store.set('yva-theme', t); }
+document.getElementById('themeBtn').addEventListener('click', () => setTheme(root.dataset.theme === 'dark' ? 'light' : 'dark'));
+setTheme(store.get('yva-theme') || 'light');
+const mv = document.getElementById('mv');
+function setMotion(on) { root.dataset.motion = on ? 'on' : 'off'; mv.setAttribute('aria-pressed', String(on)); store.set('yva-motion', on ? 'on' : 'off'); }
+mv.addEventListener('click', () => setMotion(!motionOn()));
+setMotion((store.get('yva-motion') || (REDUCED ? 'off' : 'on')) === 'on');
+
+/* תווים מוזיקליים שצפים ברקע */
+(function () {
+  const host = document.getElementById('notes'); const N = 15;
+  for (let i = 0; i < N; i++) {
+    const d = document.createElement('div');
+    d.className = 'nf' + (i % 3 === 0 ? ' alt' : '');
+    const s = 22 + ((i * 17) % 34);
+    d.style.cssText = '--x:' + ((i * 6.9 + (i % 4) * 3) % 96).toFixed(1) + '%;--s:' + s + 'px;--d:' + (34 + (i * 5) % 30) + 's;--dl:-' + ((i * 7.3) % 40).toFixed(1) + 's;--sw:' + (5 + (i % 5)) + 's';
+    d.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">' + NOTES[i % NOTES.length] + '</svg>';
+    host.appendChild(d);
+  }
+})();
+
+/* אקולייזר בנגן */
+(function () {
+  const eqs = document.getElementById('eqs');
+  for (let i = 0; i < 28; i++) { const b = document.createElement('i'); b.style.cssText = '--i:' + i + ';--lo:' + (0.12 + (i % 5) * 0.04).toFixed(2) + ';--hi:' + (0.4 + Math.abs(Math.sin(i * 0.7)) * 0.6).toFixed(2); eqs.appendChild(b); }
+})();
+
+/* כתיבה אוטומטית בשורת החיפוש העליונה */
+const typed = document.getElementById('typed');
+(async function typer() {
+  let k = 0;
+  for (;;) {
+    const list = EX[root.lang] || EX.en; const phrase = list[k++ % list.length];
+    if (!motionOn()) { typed.textContent = phrase; await sleep(900); continue; }
+    while (document.hidden) await sleep(500);
+    for (let i = 1; i <= phrase.length; i++) { typed.textContent = phrase.slice(0, i); await sleep(70); }
+    await sleep(1500);
+    for (let i = phrase.length; i >= 0; i--) { typed.textContent = phrase.slice(0, i); await sleep(22); }
+    await sleep(300);
+  }
+})();
+
+/* דוגמאות לפי שפה, בסגנון הצעות חיפוש */
+const sugg = document.getElementById('sugg'), wakeText = document.getElementById('wakeText'), sgTop = document.getElementById('sgTop');
+const MICSVG = "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\" ><path d=\"M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72h-1.7z\"/></svg>";
+document.querySelectorAll('.tab').forEach((tab) => tab.addEventListener('click', () => {
+  const lg = tab.dataset.ex;
+  document.querySelectorAll('.tab').forEach((x) => { const on = x === tab; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); });
+  sugg.classList.add('swap');
+  setTimeout(() => {
+    sugg.dir = RTL.includes(lg) ? 'rtl' : 'ltr';
+    sugg.innerHTML = EX[lg].map((p, n) => '<li style="--k:' + n + '">' + MICSVG + '<span></span></li>').join('');
+    sugg.querySelectorAll('li span').forEach((sp, i) => { sp.textContent = EX[lg][i]; });
+    wakeText.textContent = WAKE[lg]; sgTop.textContent = WAKE[lg];
+    requestAnimationFrame(() => sugg.classList.remove('swap'));
+  }, motionOn() ? 180 : 0);
+}));
+
+/* נגן ההדגמה */
+const pl = document.getElementById('pl'), art = document.getElementById('art'), ov = document.getElementById('ov');
+const dS = document.getElementById('dStatus'), dF = document.getElementById('dFb'), prog = document.getElementById('prog'), pdot = document.getElementById('pdot');
+const ptime = document.getElementById('ptime'), vfill = document.getElementById('vfill'), vtitle = document.getElementById('vtitle'), ptoast = document.getElementById('ptoast'), ppIc = document.getElementById('ppIc');
+const ICON_PLAY = "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\" ><path d=\"M8 5v14l11-7z\"/></svg>", ICON_PAUSE = "<svg viewBox=\"0 0 24 24\" fill=\"currentColor\" aria-hidden=\"true\" ><path d=\"M6 5h4v14H6zM14 5h4v14h-4z\"/></svg>";
+const TR = [{ n: 'Morning Mix', c: ['#ff3d54', '#ff9a4c'], d: 272 }, { n: 'Late Night Drive', c: ['#6a4cff', '#d27bff'], d: 215 }, { n: 'Kitchen Jazz', c: ['#00a884', '#7ee8c1'], d: 198 }];
+let si = 0, t = 24, playing = true, vol = 0.55, adOn = false;
+const fmt = (s) => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+function render() {
+  const d = TR[si].d;
+  if (!adOn) { prog.style.width = (t / d * 100) + '%'; pdot.style.left = (t / d * 100) + '%'; ptime.textContent = fmt(t) + ' / ' + fmt(d); }
+  vfill.style.width = (vol * 100) + '%'; pl.classList.toggle('paused', !playing); ppIc.innerHTML = playing ? ICON_PAUSE : ICON_PLAY;
+}
+function setSong(i) { si = i % TR.length; t = 0; art.style.setProperty('--c1', TR[si].c[0]); art.style.setProperty('--c2', TR[si].c[1]); vtitle.textContent = TR[si].n; render(); }
+function setAd(on) { adOn = on; pl.classList.toggle('ad', on); if (on) { prog.style.width = '35%'; pdot.style.left = '35%'; ptime.textContent = '0:05 / 0:15'; } else render(); }
+function toast(m) { ptoast.textContent = m; ptoast.classList.add('on'); setTimeout(() => ptoast.classList.remove('on'), 2000); }
+setInterval(() => { if (playing && motionOn() && !adOn) { t = Math.min(TR[si].d - 1, t + 0.25); render(); } }, 250);
+const DEMO = [
+  { say: 'skip the ad', ok: 'Skipping the ad', pre: () => setAd(true), act: () => { setAd(false); toast('⏭ Skipped 1 ad'); } },
+  { say: 'rewind 30 seconds', ok: 'Rewinding 30 seconds', act: () => { t = Math.max(0, t - 30); render(); } },
+  { say: 'next song', ok: 'Next song', act: () => setSong(si + 1) },
+  { say: 'go to 2:30', ok: 'Going to 2:30', act: () => { t = 150; render(); } },
+  { say: 'volume up', ok: 'Volume up', act: () => { vol = Math.min(1, vol + 0.25); render(); } },
+  { say: 'pause', ok: 'Pausing', act: () => { playing = false; render(); } },
+  { say: 'play', ok: 'Playing', act: () => { playing = true; render(); } }
+];
+(async function demo() {
+  setSong(0); t = 24; render();
+  let k = 0;
+  for (;;) {
+    if (!motionOn()) { ov.classList.add('on'); dS.textContent = 'Done! ✓'; dF.textContent = '✅ Skipping the ad'; dF.classList.remove('caret'); await sleep(900); continue; }
+    while (document.hidden) await sleep(500);
+    const s = DEMO[k++ % DEMO.length];
+    if (s.pre) s.pre();
+    await sleep(1100);
+    ov.classList.add('on'); dS.textContent = 'Listening for command...'; dF.textContent = ''; dF.classList.add('caret');
+    await sleep(700);
+    for (let i = 1; i <= s.say.length; i++) { dF.textContent = '🎙 ' + s.say.slice(0, i); await sleep(60); }
+    await sleep(500);
+    dF.classList.remove('caret'); dS.textContent = 'Executing...'; dF.textContent = '✅ ' + s.ok; s.act();
+    await sleep(600); dS.textContent = 'Done! ✓';
+    await sleep(1300); ov.classList.remove('on');
+    await sleep(2300);
+  }
+})();
+
+/* צ'יפ ניווט פעיל לפי הגלילה */
+(function () {
+  const links = [...document.querySelectorAll('.nv')]; const map = {};
+  links.forEach((l) => { map[l.dataset.sec] = l; });
+  const secs = ['top', 'how', 'can', 'langs', 'know', 'privacy', 'faq'].map((id) => document.getElementById(id) || document.querySelector('[data-sec-id="' + id + '"]')).filter(Boolean);
+  if (!('IntersectionObserver' in window)) return;
+  const io = new IntersectionObserver((es) => es.forEach((e) => {
+    if (!e.isIntersecting) return;
+    const id = e.target.id || e.target.dataset.secId;
+    links.forEach((l) => l.removeAttribute('aria-current')); if (map[id]) map[id].setAttribute('aria-current', 'true');
+  }), { rootMargin: '-35% 0px -60% 0px' });
+  secs.forEach((s) => io.observe(s));
+})();
+
+/* כניסה הדרגתית */
+const rv = document.querySelectorAll('.rv');
+if ('IntersectionObserver' in window && !REDUCED) {
+  const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold: 0.1 });
+  rv.forEach((el) => io.observe(el));
+} else rv.forEach((el) => el.classList.add('in'));
+</script>
+</body>
+</html>
